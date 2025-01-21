@@ -1,4 +1,4 @@
-# concat.zsh
+# concat-zsh
 
 `concat.zsh` is a Zsh function designed to merge the contents of multiple files based on specified extensions and filtering criteria. Developed to gather files for use as context in Large Language Model (LLM) queries, `concat.zsh` serves as a valuable tool for developers and system administrators aiming to organize and consolidate project files efficiently.
 
