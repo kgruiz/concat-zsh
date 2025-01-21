@@ -1,6 +1,6 @@
-# concat.zsh
+# concat-zsh
 
-`concat.zsh` is a Zsh function designed to merge the contents of multiple files based on specified extensions and filtering criteria. Developed to gather files for use as context in Large Language Model (LLM) queries, `concat.zsh` serves as a valuable tool for developers and system administrators aiming to organize and consolidate project files efficiently.
+`concat` is a Zsh function designed to merge the contents of multiple files based on specified extensions and filtering criteria. Developed to aggregate files for use as context in Large Language Model (LLM) queries, `concat` is a useful tool for developers and system administrators seeking to organize and consolidate project files efficiently.
 
 ## Table of Contents
 
@@ -8,7 +8,7 @@
 - [Features](#features)
 - [Installation](#installation)
   - [Method 1: Automatic Sourcing of All Custom Functions](#method-1-automatic-sourcing-of-all-custom-functions)
-  - [Method 2: Direct Sourcing of the `concat.zsh` Function](#method-2-direct-sourcing-of-the-concatzsh-function)
+  - [Method 2: Direct Sourcing of the `concat` Function](#method-2-direct-sourcing-of-the-concat-function)
 - [Quick Start](#quick-start)
 - [Usage](#usage)
   - [Basic Syntax](#basic-syntax)
@@ -22,12 +22,12 @@
 
 ## Overview
 
-`concat.zsh` simplifies the process of combining file contents by providing robust filtering and concatenation capabilities. Whether you're preparing code snippets for LLMs, consolidating logs, or managing files within larger projects, this tool ensures a streamlined and customizable experience.
+`concat` facilitates the combination of file contents by providing filtering and concatenation options. Whether preparing code snippets for LLMs, consolidating logs, or managing files within larger projects, this tool offers a straightforward and customizable approach.
 
 ## Features
 
 - **Extension Filtering**: Select files by one or multiple extensions (e.g., `.py`, `.js`, `.txt`).
-- **Recursive Search**: Search directories recursively or limit to the top level.
+- **Recursive Search**: Traverse directories recursively or limit the search to the top level.
 - **Exclusion Patterns**: Exclude specific files or directories using patterns or wildcards.
 - **Hidden Files Handling**: Option to include or exclude hidden files and directories.
 - **Python Cache Cleanup**: Automatically remove `__pycache__` directories and `.pyc` files.
@@ -38,99 +38,123 @@
 
 ## Installation
 
-To add the `concat.zsh` function to your Zsh environment, choose one of the following methods:
+Integrate the `concat` function into your Zsh environment by selecting one of the following methods based on your preference and setup requirements.
 
 ### Method 1: Automatic Sourcing of All Custom Functions
 
-Suitable if you manage multiple custom functions.
+**Suitable for users managing multiple custom Zsh functions.**
 
 1. **Create a Directory for Custom Functions**
 
-    ```zsh
-    mkdir -p ~/.zsh_functions
-    ```
+   Ensure a dedicated directory for your custom Zsh functions exists. If not, create one using the following command:
+
+   ```zsh
+   mkdir -p ~/.zsh_functions
+   ```
 
 2. **Add the `concat.zsh` File**
 
-    Move the `concat.zsh` file into the `~/.zsh_functions` directory.
+   Move the `concat.zsh` file into the `~/.zsh_functions` directory:
 
-    ```zsh
-    mv path_to_concat.zsh ~/.zsh_functions/concat.zsh
-    ```
+   ```zsh
+   mv /path/to/concat.zsh ~/.zsh_functions/concat.zsh
+   ```
+
+   *Replace `/path/to/concat.zsh` with the actual path to your `concat.zsh` file.*
 
 3. **Configure Your Zsh Profile**
 
-    Open your `~/.zshrc` file in a text editor:
+   Open your `~/.zshrc` file in your preferred text editor:
 
-    ```zsh
-    nano ~/.zshrc
-    ```
+   ```zsh
+   nano ~/.zshrc
+   ```
 
-    Add the following lines to source all `.zsh` files in the `~/.zsh_functions` directory:
+   Append the following script to source all `.zsh` files within the `~/.zsh_functions` directory:
 
-    ```zsh
-    # Source all custom Zsh functions from ~/.zsh_functions
-    if [[ -d "$HOME/.zsh_functions" ]]; then
-      for func_file in "$HOME/.zsh_functions"/*.zsh; do
-        if [[ -f "$func_file" ]]; then
-          source "$func_file"
-        fi
-      done
-    fi
-    ```
+   ```zsh
+   # Source all custom Zsh functions from ~/.zsh_functions
+   if [[ -d "$HOME/.zsh_functions" ]]; then
+       for func_file in "$HOME/.zsh_functions"/*.zsh; do
+           if [[ -f "$func_file" ]]; then
+               if ! source "$func_file" 2>/dev/null; then
+                   echo "Error: Failed to source $(basename "$func_file"). Please verify the file's path and integrity." >&2
+               fi
+           else
+               echo "Warning: '$func_file' is not a regular file or does not exist." >&2
+           fi
+       done
+   else
+       echo "Error: Directory '$HOME/.zsh_functions' does not exist. Please create it and add your function files." >&2
+   fi
+   ```
 
 4. **Reload Your Zsh Configuration**
 
-    Apply the changes by sourcing your `~/.zshrc`:
+   Apply the changes by sourcing your updated `~/.zshrc`:
 
-    ```zsh
-    source ~/.zshrc
-    ```
+   ```zsh
+   source ~/.zshrc
+   ```
 
-### Method 2: Direct Sourcing of the `concat.zsh` Function
+### Method 2: Direct Sourcing of the `concat` Function
 
-Choose this method if you prefer to source the `concat.zsh` function individually.
+**Recommended for users who prefer to source the `concat` function individually. Creating a directory for functions is optional but recommended for better organization.**
 
-1. **Create a Directory for Custom Functions**
+1. **Create a Directory for Custom Functions (Optional but Recommended)**
 
-    ```zsh
-    mkdir -p ~/.zsh_functions
-    ```
+   While optional, organizing your custom functions in a dedicated directory enhances maintainability. Create one if you haven't already:
+
+   ```zsh
+   mkdir -p ~/.zsh_functions
+   ```
 
 2. **Add the `concat.zsh` File**
 
-    Move the `concat.zsh` file into the `~/.zsh_functions` directory.
+   Move the `concat.zsh` file into the `~/.zsh_functions` directory:
 
-    ```zsh
-    mv path_to_concat.zsh ~/.zsh_functions/concat.zsh
-    ```
+   ```zsh
+   mv /path/to/concat.zsh ~/.zsh_functions/concat.zsh
+   ```
+
+   *Replace `/path/to/concat.zsh` with the actual path to your `concat.zsh` file.*
 
 3. **Configure Your Zsh Profile**
 
-    Open your `~/.zshrc` file in a text editor:
+   Open your `~/.zshrc` file in your preferred text editor:
 
-    ```zsh
-    nano ~/.zshrc
-    ```
+   ```zsh
+   nano ~/.zshrc
+   ```
 
-    Add the following line to source the `concat.zsh` function directly:
+   Append the following script to source the `concat.zsh` function directly:
 
-    ```zsh
-    # Source the concat function
-    source "$HOME/.zsh_functions/concat.zsh"
-    ```
+   ```zsh
+   # Source the concat function
+   CONCAT_FUNC_PATH="$HOME/.zsh_functions/concat.zsh"
+
+   if [[ -f "$CONCAT_FUNC_PATH" ]]; then
+       if ! source "$CONCAT_FUNC_PATH" 2>/dev/null; then
+           echo "Error: Failed to source 'concat.zsh'. Please verify the file's path and integrity." >&2
+       fi
+   else
+       echo "Error: 'concat.zsh' not found in '$HOME/.zsh_functions/'. Please ensure the file exists." >&2
+   fi
+   ```
 
 4. **Reload Your Zsh Configuration**
 
-    Apply the changes by sourcing your `~/.zshrc`:
+   Apply the changes by sourcing your updated `~/.zshrc`:
 
-    ```zsh
-    source ~/.zshrc
-    ```
+   ```zsh
+   source ~/.zshrc
+   ```
+
+   **Note:** Only error messages will appear if issues are encountered during sourcing.
 
 ## Quick Start
 
-After installation, you can quickly concatenate files by specifying the desired extensions. For example, to concatenate all Python files in the current directory:
+After installation, you can concatenate files by specifying the desired extensions. For example, to concatenate all Python files in the current directory:
 
 ```zsh
 concat .py
@@ -138,7 +162,7 @@ concat .py
 
 ## Usage
 
-The `concat` function provides options to customize how files are merged. Below are detailed instructions on its usage.
+The `concat` function offers various options to customize how files are merged. Below are detailed instructions on its usage.
 
 ### Basic Syntax
 
@@ -166,7 +190,7 @@ concat [extensions] [OPTIONS]
 | `--verbose`                   | `-v`  | Enable verbose output, showing matched files and other details.                                                                                        |
 | `--case-sensitive-extensions` | `-c`  | Match file extensions case-sensitively. Default is `false`.                                                                                           |
 | `--case-sensitive-excludes`   | `-s`  | Match exclude patterns case-sensitively. Default is `false`.                                                                                          |
-| `--case-sensitive-all`        | `-a`  | Enables case-sensitive matching for both extensions and exclude patterns, overriding the two options above. Default is `false`.                         |
+| `--case-sensitive-all`        | `-a`  | Enable case-sensitive matching for both extensions and exclude patterns, overriding the two options above. Default is `false`.                         |
 | `--tree`                      | `-T`  | Include a tree representation of directories in the output. Default is `true`.                                                                         |
 | `--no-tree`                   |       | Disable the tree representation in the output (overrides `--tree`).                                                                                    |
 | `--include-hidden`            | `-H`  | Include hidden files and directories in the search. Default is `false`.                                                                                |
@@ -210,19 +234,19 @@ concat [extensions] [OPTIONS]
 
 ## Contributing
 
-Contributions are welcome! Whether you're reporting a bug, suggesting a feature, or submitting a pull request, your input helps improve `concat.zsh`.
+Contributions are welcome! Whether you're reporting a bug, suggesting a feature, or submitting a pull request, your input helps improve `concat`.
 
 ### How to Contribute
 
 1. **Fork the Repository**
 
-    Click the "Fork" button at the top right of the repository page to create your own copy.
+    Navigate to the repository page and click the "Fork" button to create your own copy.
 
 2. **Clone Your Fork**
 
     ```zsh
-    git clone https://github.com/your-username/concat.zsh.git
-    cd concat.zsh
+    git clone https://github.com/your-username/concat-zsh.git
+    cd concat-zsh
     ```
 
 3. **Create a Feature Branch**
@@ -253,11 +277,11 @@ Contributions are welcome! Whether you're reporting a bug, suggesting a feature,
 
 ### Reporting Issues
 
-If you encounter any issues or have feature requests, please open an issue in the repository's [Issues](https://github.com/kgruiz/concat.zsh/issues) section. Include detailed information to help maintainers address the problem effectively.
+If you encounter any issues or have feature requests, please open an issue in the repository's [Issues](https://github.com/your-username/concat-zsh/issues) section. Include detailed information to help maintainers address the problem effectively.
 
 ## Support
 
-For support, please open an issue in the [Issues](https://github.com/kgruiz/concat.zsh/issues) section of the repository.
+For support, please open an issue in the [Issues](https://github.com/your-username/concat-zsh/issues) section of the repository.
 
 ## License
 
