@@ -33,6 +33,7 @@
 - **Python Cache Cleanup**: Automatically remove `__pycache__` directories and `.pyc` files.
 - **Directory Tree Overview**: Generate a tree structure of the target directory in the output.
 - **Verbose and Debug Modes**: Enable logging and execution tracing for troubleshooting.
+- **Binary File Exclusion**: Automatically skip unreadable or binary files if desired.
 - **Customizable Output**: Specify output file names and directories.
 - **LLM-Friendly Concatenation**: Organize file aggregation for compatibility with Large Language Models.
 
@@ -183,20 +184,22 @@ concat [extensions] [OPTIONS]
 | `--input-dir <dir>`           | `-i`  | Directory to search for files. Can be relative or absolute. Defaults to the current directory.                                                        |
 | `--exclude <patterns>`        | `-e`  | Comma-separated list of file or directory paths/patterns to exclude. Supports wildcards.                                                             |
 | `--exclude-extensions <exts>` | `-X`  | Comma-separated list of file extensions to exclude (e.g., `txt,log`). Extensions can be prefixed with `.` or provided as plain text.                 |
-| `--recursive`                 | `-r`  | Recursively search subdirectories. Default is `true`.                                                                                                 |
+| `--recursive`                 | `-r`  | Recursively search subdirectories. Default is `true`.                                                                                                |
 | `--no-recursive`              |       | Disable recursive search.                                                                                                                            |
 | `--title`                     | `-t`  | Include a title line at the start of the output file. Default is `true`.                                                                             |
-| `--no-title`                  |       | Exclude the title line from the output file.                                                                                                        |
-| `--verbose`                   | `-v`  | Enable verbose output, showing matched files and other details.                                                                                        |
-| `--case-sensitive-extensions` | `-c`  | Match file extensions case-sensitively. Default is `false`.                                                                                           |
-| `--case-sensitive-excludes`   | `-s`  | Match exclude patterns case-sensitively. Default is `false`.                                                                                          |
-| `--case-sensitive-all`        | `-a`  | Enable case-sensitive matching for both extensions and exclude patterns, overriding the two options above. Default is `false`.                         |
-| `--tree`                      | `-T`  | Include a tree representation of directories in the output. Default is `true`.                                                                         |
-| `--no-tree`                   |       | Disable the tree representation in the output (overrides `--tree`).                                                                                    |
-| `--include-hidden`            | `-H`  | Include hidden files and directories in the search. Default is `false`.                                                                                |
-| `--no-include-hidden`         |       | Exclude hidden files and directories from the search.                                                                                                 |
-| `--delPyCache`                | `-p`  | Automatically delete `__pycache__` folders and `.pyc` files. Default is `true`.                                                                        |
-| `--no-delPyCache`             |       | Disable automatic deletion of `__pycache__` and `.pyc` files.                                                                                         |
+| `--no-title`                  |       | Exclude the title line from the output file.                                                                                                         |
+| `--verbose`                   | `-v`  | Enable verbose output, showing matched files and other details.                                                                                      |
+| `--case-sensitive-extensions` | `-c`  | Match file extensions case-sensitively. Default is `false`.                                                                                          |
+| `--case-sensitive-excludes`   | `-s`  | Match exclude patterns case-sensitively. Default is `false`.                                                                                         |
+| `--case-sensitive-all`        | `-a`  | Enable case-sensitive matching for both extensions and exclude patterns, overriding the two options above. Default is `false`.                        |
+| `--tree`                      | `-T`  | Include a tree representation of directories in the output. Default is `true`.                                                                        |
+| `--no-tree`                   |       | Disable the tree representation in the output (overrides `--tree`).                                                                                   |
+| `--include-hidden`            | `-H`  | Include hidden files and directories in the search. Default is `false`.                                                                               |
+| `--no-include-hidden`         |       | Exclude hidden files and directories from the search.                                                                                                |
+| `--delPyCache`                | `-p`  | Automatically delete `__pycache__` folders and `.pyc` files. Default is `true`.                                                                       |
+| `--no-delPyCache`             |       | Disable automatic deletion of `__pycache__` and `.pyc` files.                                                                                        |
+| `--exclude-binary`            | `-B`  | Automatically exclude unreadable or binary files from concatenation. Default is `true`.                                                              |
+| `--no-exclude-binary`         |       | Do not exclude unreadable or binary files (overrides `--exclude-binary`).                                                                             |
 | `--debug`                     | `-x`  | Enable debug mode with verbose execution tracing.                                                                                                     |
 | `--help`                      | `-h`  | Display the help message and exit.                                                                                                                    |
 
@@ -230,6 +233,12 @@ concat [extensions] [OPTIONS]
 
     ```zsh
     concat .sh --debug
+    ```
+
+6. **Disable Automatic Exclusion of Binary Files**
+
+    ```zsh
+    concat .sh --no-exclude-binary
     ```
 
 ## Contributing

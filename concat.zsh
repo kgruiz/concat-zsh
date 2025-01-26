@@ -699,6 +699,7 @@ EOF
 
         echo "Other Options:"
         echo "  - Include Hidden: $includeHidden"
+        echo "  - Exclude Binaries: $excludeBinary"
 
         echo "- - - - - - - - - - - - - - - - - - - -"
         echo "Total matched files: ${#matchedFiles[@]}"
