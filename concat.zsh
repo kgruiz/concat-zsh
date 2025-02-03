@@ -585,7 +585,7 @@ EOF
     fi
 
     # ------------------------------
-    # Helpers for hidden, binary checks
+    # Helpers for hidden checks
     # ------------------------------
     IsPathHidden() {
         local path="$1"
