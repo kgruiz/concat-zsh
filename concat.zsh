@@ -16,84 +16,84 @@ Arguments:
       (e.g., "txt,md" or ".py,.js"). If not specified, all file extensions are included.
 
 Options:
-  --output-file, -f <file>
+  --out-file, -o <file>
       Name or path for the concatenated output file. Defaults to "concatOutput.txt".
 
-  --output-dir, -d <dir>
+  --out-dir, -d <dir>
       Directory where the output file will be saved. Defaults to current directory.
 
-  --input-dir, -i <dir>
+  --in-dir, -i <dir>
       Directory to search for files. Can be relative or absolute. Defaults to current directory.
 
   --exclude, -e <patterns>
       Comma-separated list of file or directory paths/patterns to exclude. Wildcards supported.
 
-  --exclude-extensions, -X <exts>
-      Comma-separated list of file extensions to exclude (e.g., "txt,log").
+  --ignore-ext, -E <exts>
+      Comma-separated list of file extensions to ignore (e.g., "txt,log").
       Extensions can be prefixed with '.' or given as plain text.
 
   --recursive, -r
       Recursively search subdirectories. Default is true.
 
-  --no-recursive
+  --no-recursive, -R
       Disable recursive search.
 
   --title, -t
       Include a title line at the start of the output file. Default is true.
 
-  --no-title
+  --no-title, -T
       Exclude the title line from the output file.
 
   --verbose, -v
       Enable verbose output, showing matched files and other details.
 
-  --case-sensitive-extensions, -c
+  --case-ext, -c
       Match file extensions case-sensitively. Default is false.
 
-  --case-sensitive-excludes, -s
+  --case-exclude, -s
       Match exclude patterns case-sensitively. Default is false.
 
-  --case-sensitive-all, -a
+  --case-all, -a
       Enables case-sensitive matching for both extensions and exclude patterns,
       overriding the two options above. Default is false.
 
-  --tree, -T
+  --show-tree, -w
       Include a tree representation of directories in the output. Default is true.
 
-  --no-tree
-      Disable the tree representation in the output (overrides --tree).
+  --no-tree, -W
+      Disable the tree representation in the output (overrides --show-tree).
 
   --include-hidden, -H
       Include hidden files/directories in the search. Default is false.
 
-  --no-include-hidden
+  --no-hidden, -N
       Exclude hidden files/directories.
 
-  --delPyCache, -p
+  --purge-pycache, -p
       Automatically delete '__pycache__' folders and '.pyc' files. Default is true.
 
-  --no-delPyCache
+  --no-purge-pycache, -P
       Disable automatic deletion of '__pycache__' and '.pyc' files.
 
-  --exclude-binary, -B
-      Automatically exclude unreadable or binary files from concatenation. Default is true.
+  --ignore-binary, -b
+      Automatically ignore unreadable or binary files from concatenation. Default is true.
 
-  --no-exclude-binary
-      Include all files (overrides --exclude-binary).
+  --include-binary, -B
+      Include all files (overrides --ignore-binary).
 
   --debug, -x
       Enable debug mode with verbose execution tracing.
 
-  --xml
+  --xml, -m
       Output the concatenation result in XML format instead of plain text.
 
   --help, -h
       Show this help message and exit.
 
 Examples:
-  concat .py --output-file allPython.txt --exclude __init__.py
+  concat .py --out-file allPython.txt --exclude __init__.py
   concat py,js -r -v
-  concat --no-title --input-dir ~/project --output-dir ~/Desktop
+  concat --no-title --in-dir ~/project --out-dir ~/Desktop
 EOF
             return 0
         fi
@@ -133,30 +133,30 @@ EOF
                 set -x
                 shift
             ;;
-            --output-file|-f)
+            --out-file|-o)
                 if [[ -n "$2" && "$2" != --* ]]; then
                     outputFile="$2"
                     shift 2
                 else
-                    echo "Error: --output-file requires a filename argument."
+                    echo "Error: --out-file requires a filename argument."
                     return 1
                 fi
             ;;
-            --output-dir|-d)
+            --out-dir|-d)
                 if [[ -n "$2" && "$2" != --* ]]; then
                     outputDir="$2"
                     shift 2
                 else
-                    echo "Error: --output-dir requires a directory argument."
+                    echo "Error: --out-dir requires a directory argument."
                     return 1
                 fi
             ;;
-            --input-dir|-i)
+            --in-dir|-i)
                 if [[ -n "$2" && "$2" != --* ]]; then
                     inputDir="$2"
                     shift 2
                 else
-                    echo "Error: --input-dir requires a directory argument."
+                    echo "Error: --in-dir requires a directory argument."
                     return 1
                 fi
             ;;
@@ -173,7 +173,7 @@ EOF
                     return 1
                 fi
             ;;
-            --exclude-extensions|-X)
+            --ignore-ext|-E)
                 if [[ -n "$2" && "$2" != --* ]]; then
                     IFS=',' read -A rawExcludeExtensions <<< "$2"
                     for ext in "${rawExcludeExtensions[@]}"; do
@@ -183,7 +183,7 @@ EOF
                     done
                     shift 2
                 else
-                    echo "Error: --exclude-extensions requires an extension argument."
+                    echo "Error: --ignore-ext requires an extension argument."
                     return 1
                 fi
             ;;
@@ -191,7 +191,7 @@ EOF
                 recursive=true
                 shift
             ;;
-            --no-recursive)
+            --no-recursive|-R)
                 recursive=false
                 shift
             ;;
@@ -199,7 +199,7 @@ EOF
                 addTitle=true
                 shift
             ;;
-            --no-title)
+            --no-title|-T)
                 addTitle=false
                 shift
             ;;
@@ -207,23 +207,23 @@ EOF
                 verbose=true
                 shift
             ;;
-            --case-sensitive-extensions|-c)
+            --case-ext|-c)
                 caseSensitiveExtensions=true
                 shift
             ;;
-            --case-sensitive-excludes|-s)
+            --case-exclude|-s)
                 caseSensitiveExcludes=true
                 shift
             ;;
-            --case-sensitive-all|-a)
+            --case-all|-a)
                 caseSensitiveAll=true
                 shift
             ;;
-            --tree|-T)
+            --show-tree|-w)
                 tree=true
                 shift
             ;;
-            --no-tree)
+            --no-tree|-W)
                 tree=false
                 shift
             ;;
@@ -231,27 +231,27 @@ EOF
                 includeHidden=true
                 shift
             ;;
-            --no-include-hidden)
+            --no-hidden|-N)
                 includeHidden=false
                 shift
             ;;
-            --delPyCache|-p)
+            --purge-pycache|-p)
                 delPyCache=true
                 shift
             ;;
-            --no-delPyCache)
+            --no-purge-pycache|-P)
                 delPyCache=false
                 shift
             ;;
-            --exclude-binary|-B)
+            --ignore-binary|-b)
                 excludeBinary=true
                 shift
             ;;
-            --no-exclude-binary)
+            --include-binary|-B)
                 excludeBinary=false
                 shift
             ;;
-            --xml)
+            --xml|-m)
                 xmlOutput=true
                 shift
             ;;
