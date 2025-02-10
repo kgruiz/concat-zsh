@@ -1,234 +1,3 @@
-# concat.zsh
-
-# -----------------------------------------------------------------------------
-# concat
-# -----------------------------------------------------------------------------
-#
-# Description:
-#   Combines the contents of files that match a set of optional file extensions
-#   into a single output file. Also supports various filtering and formatting
-#   options, including excluding certain paths, deleting Python cache directories,
-#   generating a directory tree overview, and optionally excluding binary or
-#   unreadable files.
-#
-# Usage:
-#   concat [extensions] [OPTIONS]
-#
-#   - If [extensions] are provided, only files with those extensions will be considered.
-#   - You can specify multiple extensions in a comma-separated list, like ".py,.js"
-#     or "txt,md".
-#
-# Options:
-#   --output-file, -f <file>          Name/path of the output file. Defaults to "concatOutput.txt".
-#   --output-dir, -d <dir>           Directory where the output file is placed. Defaults to the current directory.
-#   --input-dir, -i <dir>            Directory to search for matching files. Defaults to the current directory.
-#   --exclude, -e <patterns>         Comma-separated list of paths or patterns to exclude (supports wildcards).
-#   --exclude-extensions, -X <exts>  Comma-separated list of file extensions to exclude (e.g., "txt,log").
-#                                    Extensions can be prefixed with '.' or given as plain text.
-#   --recursive, -r                  Recursively search subdirectories. Default is true.
-#   --no-recursive                   Disable recursive search.
-#   --title, -t                      Include a title at the start of the output file. Default is true.
-#   --no-title                       Exclude the title from the output file.
-#   --verbose, -v                    Show verbose output, including debug-like logs of matched files.
-#   --case-sensitive-extensions, -c  Match extensions in a case-sensitive manner. Default is false.
-#   --case-sensitive-excludes, -s    Match exclude patterns in a case-sensitive manner. Default is false.
-#   --case-sensitive-all, -a         Case-sensitive matching for both extensions and excludes (overrides the above two).
-#   --tree, -T                       Include a tree representation of the directory. Default is true.
-#   --no-tree                        Disable the tree representation in the output file, overriding --tree.
-#   --include-hidden, -H             Include hidden files and directories in the search. Default is false.
-#   --no-include-hidden              Exclude hidden files and directories.
-#   --delPyCache, -p                 Delete __pycache__ directories and .pyc files automatically. Default is true.
-#   --no-delPyCache                  Disable the deletion of __pycache__ and .pyc files.
-#   --exclude-binary, -B             Automatically exclude unreadable or binary files. Default is true.
-#   --no-exclude-binary              Do not exclude unreadable or binary files (overrides --exclude-binary).
-#   --debug, -x                      Enable debug mode (with trace output).
-#   --help, -h                       Display this help message and exit.
-#
-# Examples:
-#   concat .py --output-file allPython.txt --exclude __init__.py
-#   concat py,js -r -v
-#   concat --no-title --input-dir ~/project --output-dir ~/Desktop
-
-# -----------------------------------------------------------------------------
-# FixedPrint
-# -----------------------------------------------------------------------------
-#
-# Description:
-#   Prints the given string padded to a fixed width. This ensures that if the
-#   current progress line is shorter than the previous one, leftover characters
-#   are overwritten.
-#
-# Parameters
-# ----------
-# str : string
-#   The string to print.
-#
-# Returns
-# -------
-# None
-#
-FixedPrint() {
-    local str="$1"
-    local width=100  # Fixed width to accommodate the longest possible progress line.
-    printf "\r%-${width}s" "$str" >&2
-}
-
-# -----------------------------------------------------------------------------
-# FormatTime
-# -----------------------------------------------------------------------------
-#
-# Description:
-#   Converts a time in seconds into a formatted string (HH:MM:SS).
-#
-# Parameters
-# ----------
-# T : int
-#   The time in seconds.
-#
-# Returns
-# -------
-# A string in HH:MM:SS format.
-#
-FormatTime() {
-    local T=$1
-    printf "%02d:%02d:%02d" $(( T / 3600 )) $(( (T % 3600) / 60 )) $(( T % 60 ))
-}
-
-# -----------------------------------------------------------------------------
-# UpdateScanProgressBar
-# -----------------------------------------------------------------------------
-#
-# Description:
-#   Displays a progress bar on stderr for scanning operations before concatenation.
-#   It shows the percentage, a fixed-length bar, count, elapsed time, and estimated
-#   remaining time.
-#
-# Parameters
-# ----------
-# current : int
-#   The current count of scanned files.
-# total : int
-#   The total count of files to scan.
-#
-# Returns
-# -------
-# None
-#
-UpdateScanProgressBar() {
-    local current=$1
-    local total=$2
-
-    # Guard against division by zero.
-    if [ "$total" -eq 0 ]; then
-        return
-    fi
-
-    if [ -z "$START_SCAN_TIME" ]; then
-        START_SCAN_TIME=$(date +%s)
-    fi
-
-    local now elapsed
-    now=$(date +%s)
-    elapsed=$(( now - START_SCAN_TIME ))
-
-    local remaining
-    remaining=$(awk -v e=$elapsed -v c=$current -v t=$total 'BEGIN {
-        if (c > 0 && t > c) { r = (e / c) * (t - c); if(r < 1) r = 1; print r } else { print 0 }
-    }')
-
-    local elapsedFormatted remainingFormatted
-    elapsedFormatted=$(FormatTime "$elapsed")
-    remainingFormatted=$(FormatTime "$remaining")
-
-    local percent=$(( 100 * current / total ))
-    local barWidth=40
-    local filled empty
-    if [ "$current" -eq "$total" ]; then
-        filled=$barWidth
-        empty=0
-    else
-        filled=$(( percent * barWidth / 100 ))
-        empty=$(( barWidth - filled ))
-    fi
-
-    local bar spaces
-    bar=$(printf '%0.s█' $(seq 1 "$filled"))
-    spaces=$(printf '%0.s░' $(seq 1 "$empty"))
-
-    local line
-    line=$(printf "\e[1;33mScanning files\e[0m [%3d%%] [%s%s] (%d/%d) • Elapsed: %s • Remaining: %s" \
-        "$percent" "$bar" "$spaces" "$current" "$total" "$elapsedFormatted" "$remainingFormatted")
-    FixedPrint "$line"
-    if [ "$current" -eq "$total" ]; then
-        printf "\n" >&2
-    fi
-}
-
-# -----------------------------------------------------------------------------
-# UpdateProgressBar
-# -----------------------------------------------------------------------------
-#
-# Description:
-#   Displays a progress bar on stderr for file concatenation operations.
-#   It shows the percentage, a fixed-length bar, count, elapsed time, and estimated
-#   remaining time.
-#
-# Parameters
-# ----------
-# current : int
-#   The current progress count.
-# total : int
-#   The total count for completion.
-#
-# Returns
-# -------
-# None
-#
-UpdateProgressBar() {
-    local current=$1
-    local total=$2
-
-    if [ -z "$START_TIME" ]; then
-        START_TIME=$(date +%s)
-    fi
-
-    local now elapsed
-    now=$(date +%s)
-    elapsed=$(( now - START_TIME ))
-
-    local remaining
-    remaining=$(awk -v e=$elapsed -v c=$current -v t=$total 'BEGIN {
-        if (c > 0 && t > c) { r = (e / c) * (t - c); if(r < 1) r = 1; print r } else { print 0 }
-    }')
-
-    local elapsedFormatted remainingFormatted
-    elapsedFormatted=$(FormatTime "$elapsed")
-    remainingFormatted=$(FormatTime "$remaining")
-
-    local percent=$(( 100 * current / total ))
-    local barWidth=40
-    local filled empty
-    if [ "$current" -eq "$total" ]; then
-        filled=$barWidth
-        empty=0
-    else
-        filled=$(( percent * barWidth / 100 ))
-        empty=$(( barWidth - filled ))
-    fi
-
-    local bar spaces
-    bar=$(printf '%0.s█' $(seq 1 "$filled"))
-    spaces=$(printf '%0.s░' $(seq 1 "$empty"))
-
-    local line
-    line=$(printf "\e[1;34mConcatenating files\e[0m [%3d%%] [%s%s] (%d/%d) • Elapsed: %s • Remaining: %s" \
-        "$percent" "$bar" "$spaces" "$current" "$total" "$elapsedFormatted" "$remainingFormatted")
-    FixedPrint "$line"
-    if [ "$current" -eq "$total" ]; then
-        printf "\n" >&2
-    fi
-}
-
 concat() {
     # Display usage if -h or --help is provided.
     for arg in "$@"; do
@@ -315,6 +84,9 @@ Options:
   --debug, -x
       Enable debug mode with verbose execution tracing.
 
+  --xml
+      Output the concatenation result in XML format instead of plain text.
+
   --help, -h
       Show this help message and exit.
 
@@ -326,6 +98,8 @@ EOF
             return 0
         fi
     done
+
+    originalArgs=("$@")
 
     # ------------------------------
     # Default Configuration
@@ -347,6 +121,7 @@ EOF
     delPyCache=true
     debug=false
     excludeBinary=true
+    xmlOutput=false
 
     # ------------------------------
     # Parse Command-Line Options
@@ -476,6 +251,10 @@ EOF
                 excludeBinary=false
                 shift
             ;;
+            --xml)
+                xmlOutput=true
+                shift
+            ;;
             --*)
                 echo "Unknown option: $1"
                 return 1
@@ -603,7 +382,11 @@ EOF
     currentScan=0
     for file in "${foundFiles[@]}"; do
         currentScan=$(( currentScan + 1 ))
-        UpdateScanProgressBar "$currentScan" "$totalFound"
+        if [[ "$xmlOutput" == false ]]; then
+            if type UpdateScanProgressBar >/dev/null 2>&1; then
+                UpdateScanProgressBar "$currentScan" "$totalFound"
+            fi
+        fi
         fullPath="$(realpath "$file")"
         if IsPathHidden "$fullPath" && [[ "$includeHidden" == false ]]; then
             continue
@@ -681,7 +464,151 @@ EOF
         fullTree=$(sed '1d' <<< "$fullTree")
     fi
 
+    if [[ "$xmlOutput" == true ]]; then
     {
+        fullCommand=$(printf '%q ' "${originalArgs[@]}")
+        fullCommand=${fullCommand% }
+        echo '<?xml version="1.0" encoding="UTF-8"?>'
+        echo '<ConcatOutput>'
+        if [[ "$addTitle" == true ]]; then
+            echo "  <Title>"
+            if $recursive; then
+                echo "    <Text>Contents of '$inputDirName' and its subdirectories</Text>"
+            else
+                echo "    <Text>Contents of '$inputDirName' (not including its subdirectories)</Text>"
+            fi
+            echo "  </Title>"
+        fi
+
+        echo "  <Command>concat ${fullCommand}</Command>"
+
+        echo "  <Parameters>"
+        echo "    <Extensions>"
+        if [[ ${#extensionsArray[@]} -eq 0 ]]; then
+            echo "      <Value>All</Value>"
+        else
+            for ext in "${extensionsArray[@]}"; do
+                echo "      <Value>$ext</Value>"
+            done
+        fi
+        echo "    </Extensions>"
+        echo "    <ExcludePatterns>"
+        if [[ ${#excludePatterns[@]} -eq 0 ]]; then
+            echo "      <Value>N/A</Value>"
+        else
+            for pat in "${excludePatterns[@]}"; do
+                echo "      <Value>$pat</Value>"
+            done
+        fi
+        echo "    </ExcludePatterns>"
+        echo "    <CaseSensitivityOptions>"
+        echo "      <Extensions>$caseSensitiveExtensions</Extensions>"
+        echo "      <Excludes>$caseSensitiveExcludes</Excludes>"
+        echo "      <All>$caseSensitiveAll</All>"
+        echo "    </CaseSensitivityOptions>"
+        echo "    <OtherOptions>"
+        echo "      <IncludeHidden>$includeHidden</IncludeHidden>"
+        echo "      <ExcludeBinary>$excludeBinary</ExcludeBinary>"
+        echo "    </OtherOptions>"
+        echo "    <TotalMatchedFiles>${#matchedFiles[@]}</TotalMatchedFiles>"
+        echo "  </Parameters>"
+        if [[ "$tree" == true ]]; then
+            echo "  <TreeOutput>"
+            echo "    <TreeRepresentation>"
+            tempInputDir="$inputDir"
+            tempInputDir="${tempInputDir/#.\//}"
+            tempInputDir="${tempInputDir%/}"
+            echo "      <Directory>$(basename "$(realpath "$tempInputDir")")</Directory>"
+            echo "      <Tree><![CDATA["
+            echo "$fullTree"
+            echo "]]></Tree>"
+            echo "    </TreeRepresentation>"
+            echo "    <DirectoryStructureList>"
+            typeset -A dirMap
+            fullOutputPath="$(realpath "$outputFilePath")"
+            while IFS= read -r dir; do
+                fullPath="$(realpath "$dir")"
+                if IsPathHidden "$fullPath" && [[ "$includeHidden" == false ]]; then
+                    continue
+                fi
+                children=("${(@f)$(find "$dir" -mindepth 1 -maxdepth 1 | sort)}")
+                childrenBase=()
+                for child in "${children[@]}"; do
+                    if [[ -z "$child" ]]; then
+                        continue
+                    fi
+                    fullChildPath="$(realpath "$child")"
+                    if IsPathHidden "$fullChildPath" && [[ "$includeHidden" == false ]]; then
+                        continue
+                    elif [[ "$fullChildPath" == "$fullOutputPath" ]]; then
+                        continue
+                    fi
+                    childrenBase+=("$(basename "$child")")
+                done
+                if [[ ${#childrenBase[@]} -gt 0 ]]; then
+                    childrenStr=$(printf ", %s" "${childrenBase[@]}")
+                    childrenStr="${childrenStr:2}"
+                    dirMap["$dir"]="[\"$childrenStr\"]"
+                else
+                    dirMap["$dir"]="[]"
+                fi
+            done < <(find "$inputDir" -type d | sort)
+            for dir in ${(k)dirMap}; do
+                if [[ "$dir" == "$inputDir" ]]; then
+                    relativeDir="$inputDir"
+                else
+                    relativeDir="${dir#$fullInputDir/}"
+                fi
+                if [[ "$relativeDir" == "\".\"" ]]; then
+                    relativeDir="\"$inputDirName\""
+                elif [[ "$relativeDir" == "\"./"* ]]; then
+                    remainingRelativeDir="${relativeDir#\"./}"
+                    relativeDir="\"${inputDirName}/${remainingRelativeDir}"
+                fi
+                echo "      <DirectoryEntry>$relativeDir: ${dirMap[$dir]}</DirectoryEntry>"
+            done | sort
+            echo "    </DirectoryStructureList>"
+            echo "  </TreeOutput>"
+        fi
+
+        echo "  <FileContents>"
+        totalFiles=${#matchedFiles[@]}
+        if [[ $totalFiles -gt 0 ]]; then
+            currentFile=0
+            for file in "${matchedFiles[@]}"; do
+                ((currentFile++))
+                if [[ "$xmlOutput" == false ]]; then
+                    if type UpdateProgressBar >/dev/null 2>&1; then
+                        UpdateProgressBar "$currentFile" "$totalFiles"
+                    fi
+                fi
+                relativePath="${file#$inputDir/}"
+                relativePath="${inputDirName}/${relativePath}"
+                absolutePath=$(realpath "$file")
+                filename="$(basename "$file")"
+                echo "    <File>"
+                echo "      <Filename>$filename</Filename>"
+                echo "      <RelativePath>$relativePath</RelativePath>"
+                echo "      <AbsolutePath>$absolutePath</AbsolutePath>"
+                echo "      <Content><![CDATA["
+                if [[ -r "$file" ]]; then
+                    cat "$file"
+                else
+                    echo "Error: Cannot read file '$file'."
+                fi
+                echo "]]></Content>"
+                echo "    </File>"
+            done
+        else
+            echo "    <Message>No files to concatenate.</Message>"
+        fi
+        echo "  </FileContents>"
+        echo "</ConcatOutput>"
+    } > "$outputFilePath"
+    else
+    {
+        fullCommand=$(printf '%q ' "${originalArgs[@]}")
+        fullCommand=${fullCommand% }
         if [[ "$addTitle" == true ]]; then
             if $recursive; then
                 echo "Contents of '$inputDirName' and its subdirectories"
@@ -693,7 +620,7 @@ EOF
         fi
 
         echo "--------------------------------------------------------------------------------"
-        echo "Full command: concat $@"
+        echo "Full command: \"concat ${fullCommand}\""
         echo "Parameters:"
         echo "- - - - - - - - - - - - - - - - - - - -"
         echo "Extensions:"
@@ -788,7 +715,9 @@ EOF
                 currentFile=0
                 for file in "${matchedFiles[@]}"; do
                     ((currentFile++))
-                    UpdateProgressBar "$currentFile" "$totalFiles"
+                    if type UpdateProgressBar >/dev/null 2>&1; then
+                        UpdateProgressBar "$currentFile" "$totalFiles"
+                    fi
                     relativePath="${file#$inputDir/}"
                     relativePath="${inputDirName}/${relativePath}"
                     absolutePath=$(realpath "$file")
@@ -817,6 +746,7 @@ EOF
             fi
         fi
     } > "$outputFilePath"
+    fi
 
     if [[ "$verbose" == true ]]; then
         echo "All files have been concatenated into '$outputFilePath'."
