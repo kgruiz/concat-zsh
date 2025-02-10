@@ -693,6 +693,7 @@ EOF
         fi
 
         echo "--------------------------------------------------------------------------------"
+        echo "Full command: concat $@"
         echo "Parameters:"
         echo "- - - - - - - - - - - - - - - - - - - -"
         echo "Extensions:"
