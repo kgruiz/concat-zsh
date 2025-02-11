@@ -1,4 +1,103 @@
+# concat.zsh
+
+# Function: concat
+# Usage: concat [extensions] [OPTIONS]
+
+# Combines the contents of files that match a set of optional file extensions
+# into a single output file. Also supports excluding or including paths, deleting
+# Python cache directories, generating a tree view, and more. Now also supports
+# excluding binary or unreadable files if desired.
+
+# Arguments:
+#   [extensions]
+#       Either a single extension (e.g., "txt" or ".txt") or a comma-separated list
+#       (e.g., "txt,md" or ".py,.js"). If not specified, all file extensions are included.
+
+# Options:
+#   --out-file, -o <file>
+#       Name or path for the concatenated output file. Defaults to "concatOutput.txt".
+
+#   --out-dir, -d <dir>
+#       Directory where the output file will be saved. Defaults to current directory.
+
+#   --in-dir, -i <dir>
+#       Directory to search for files. Can be relative or absolute. Defaults to current directory.
+
+#   --exclude, -e <patterns>
+#       Comma-separated list of file or directory paths/patterns to exclude. Wildcards supported.
+
+#   --include, -I <patterns>
+#       Comma-separated list of file or directory paths/patterns to include. Wildcards supported.
+
+#   --ignore-ext, -E <exts>
+#       Comma-separated list of file extensions to ignore (e.g., "txt,log").
+#       Extensions can be prefixed with '.' or given as plain text.
+
+#   --recursive, -r
+#       Recursively search subdirectories. Default is true.
+
+#   --no-recursive, -R
+#       Disable recursive search.
+
+#   --title, -t
+#       Include a title line at the start of the output file. Default is true.
+
+#   --no-title, -T
+#       Exclude the title line from the output file.
+
+#   --verbose, -v
+#       Enable verbose output, showing matched files and other details.
+
+#   --case-ext, -c
+#       Match file extensions case-sensitively. Default is false.
+
+#   --case-exclude, -s
+#       Match exclude patterns case-sensitively. Default is false.
+
+#   --case-all, -a
+#       Enables case-sensitive matching for both extensions and exclude patterns,
+#       overriding the two options above. Default is false.
+
+#   --show-tree, -w
+#       Include a tree representation of directories in the output. Default is true.
+
+#   --no-tree, -W
+#       Disable the tree representation in the output (overrides --show-tree).
+
+#   --include-hidden, -H
+#       Include hidden files/directories in the search. Default is false.
+
+#   --no-hidden, -N
+#       Exclude hidden files/directories.
+
+#   --purge-pycache, -p
+#       Automatically delete '__pycache__' folders and '.pyc' files. Default is true.
+
+#   --no-purge-pycache, -P
+#       Disable automatic deletion of '__pycache__' and '.pyc' files.
+
+#   --ignore-binary, -b
+#       Automatically ignore unreadable or binary files from concatenation. Default is true.
+
+#   --include-binary, -B
+#       Include all files (overrides --ignore-binary).
+
+#   --debug, -x
+#       Enable debug mode with verbose execution tracing.
+
+#   --xml, -m
+#       Output the concatenation result in XML format instead of plain text.
+
+#   --help, -h
+#       Show this help message and exit.
+
+# Examples:
+#   concat .py --out-file allPython.txt --exclude __init__.py
+#   concat py,js -r -v
+#   concat --no-title --in-dir ~/project --out-dir ~/Desktop
+
 concat() {
+
     # Display usage if -h or --help is provided.
     for arg in "$@"; do
         if [[ "$arg" == "-h" || "$arg" == "--help" ]]; then
@@ -6,7 +105,7 @@ concat() {
 Usage: concat [extensions] [OPTIONS]
 
 Combines the contents of files that match a set of optional file extensions
-into a single output file. Also supports excluding paths, deleting
+into a single output file. Also supports excluding or including paths, deleting
 Python cache directories, generating a tree view, and more. Now also supports
 excluding binary or unreadable files if desired.
 
@@ -27,6 +126,9 @@ Options:
 
   --exclude, -e <patterns>
       Comma-separated list of file or directory paths/patterns to exclude. Wildcards supported.
+
+  --include, -I <patterns>
+      Comma-separated list of file or directory paths/patterns to include. Wildcards supported.
 
   --ignore-ext, -E <exts>
       Comma-separated list of file extensions to ignore (e.g., "txt,log").
@@ -108,6 +210,7 @@ EOF
     outputDir="."
     inputDir="."
     excludePatterns=()
+    includePatterns=()
     excludeExtensionsArray=()
     recursive=true
     addTitle=true
@@ -170,6 +273,19 @@ EOF
                     shift 2
                 else
                     echo "Error: --exclude requires a patterns argument."
+                    return 1
+                fi
+            ;;
+            --include|-I)
+                if [[ -n "$2" && "$2" != --* ]]; then
+                    IFS=',' read -A tempIncludes <<< "$2"
+                    for pattern in "${tempIncludes[@]}"; do
+                        pattern=$(echo "$pattern" | sed 's/^[[:space:]]*//;s/[[:space:]]*$//')
+                        includePatterns+=("$pattern")
+                    done
+                    shift 2
+                else
+                    echo "Error: --include requires a patterns argument."
                     return 1
                 fi
             ;;
@@ -311,6 +427,7 @@ EOF
             echo "Extensions: All"
         fi
         echo "Exclude Patterns: ${excludePatterns[@]}"
+        echo "Include Patterns: ${includePatterns[@]}"
         echo "Exclude Extensions: ${excludeExtensionsArray[@]}"
         echo "Recursive: $recursive"
         echo "Add Title: $addTitle"
@@ -380,6 +497,7 @@ EOF
     foundFiles=("${(@f)$( "${findCommand[@]}" )}")
     totalFound=${#foundFiles[@]}
     currentScan=0
+
     for file in "${foundFiles[@]}"; do
         currentScan=$(( currentScan + 1 ))
         if [[ "$xmlOutput" == false ]]; then
@@ -387,13 +505,18 @@ EOF
                 UpdateScanProgressBar "$currentScan" "$totalFound"
             fi
         fi
+
         fullPath="$(realpath "$file")"
+
         if IsPathHidden "$fullPath" && [[ "$includeHidden" == false ]]; then
             continue
         fi
+
         fileExt=".${file##*.}"
         skipFile=false
+
         if [[ ${#excludeExtensionsArray[@]} -gt 0 ]]; then
+
             if [[ "$caseSensitiveExtensions" == false ]]; then
                 fileExtLower="${fileExt:l}"
                 for exExt in "${excludeExtensionsArray[@]}"; do
@@ -411,10 +534,13 @@ EOF
                     fi
                 done
             fi
+
             $skipFile && continue
         fi
+
         if [[ ${#extensionsArray[@]} -gt 0 ]]; then
             foundMatchingExt=false
+
             if [[ "$caseSensitiveExtensions" == false ]]; then
                 fileExtLower="${fileExt:l}"
                 for ext in "${extensionsArray[@]}"; do
@@ -432,11 +558,14 @@ EOF
                     fi
                 done
             fi
+
             if [[ "$foundMatchingExt" == false ]]; then
                 continue
             fi
         fi
+
         if [[ "$excludeBinary" == true ]]; then
+
             if [[ ! -r "$file" ]]; then
                 skipFile=true
             else
@@ -444,8 +573,31 @@ EOF
                     skipFile=true
                 fi
             fi
+
             $skipFile && continue
         fi
+
+        if [[ ${#includePatterns[@]} -gt 0 ]]; then
+            includeFile=false
+            for pattern in "${includePatterns[@]}"; do
+                if [[ "$caseSensitiveExcludes" == true ]]; then
+                    if [[ "$fullPath" == *"$pattern"* ]]; then
+                        includeFile=true
+                        break
+                    fi
+                else
+                    regexPattern=$(echo "$pattern" | sed 's/\./\\./g; s/\*/.*/g; s/\?/.?/g')
+                    if [[ "$fullPath" =~ $regexPattern ]]; then
+                        includeFile=true
+                        break
+                    fi
+                fi
+            done
+            if [[ "$includeFile" == false ]]; then
+                continue
+            fi
+        fi
+
         matchedFiles+=("$file")
         if [[ "$verbose" == true ]]; then
             echo "Matched file: $file"
@@ -501,6 +653,15 @@ EOF
             done
         fi
         echo "    </ExcludePatterns>"
+        echo "    <IncludePatterns>"
+        if [[ ${#includePatterns[@]} -eq 0 ]]; then
+            echo "      <Value>All</Value>"
+        else
+            for pat in "${includePatterns[@]}"; do
+                echo "      <Value>$pat</Value>"
+            done
+        fi
+        echo "    </IncludePatterns>"
         echo "    <CaseSensitivityOptions>"
         echo "      <Extensions>$caseSensitiveExtensions</Extensions>"
         echo "      <Excludes>$caseSensitiveExcludes</Excludes>"
@@ -634,6 +795,12 @@ EOF
             echo "  - N/A"
         else
             printf '  - %s\n' "${excludePatterns[@]}"
+        fi
+        echo "Include Patterns:"
+        if [[ ${#includePatterns[@]} -eq 0 ]]; then
+            echo "  - All"
+        else
+            printf '  - %s\n' "${includePatterns[@]}"
         fi
         echo "Case Sensitivity Options:"
         echo "  - Extensions: $caseSensitiveExtensions"
