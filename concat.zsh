@@ -2,103 +2,17 @@
 
 # Function: concat
 # Usage: concat [extensions] [OPTIONS]
-
-# Combines the contents of files that match a set of optional file extensions
-# into a single output file. Also supports excluding or including paths, deleting
-# Python cache directories, generating a tree view, and more. Now also supports
-# excluding binary or unreadable files if desired.
-
-# Arguments:
-#   [extensions]
-#       Either a single extension (e.g., "txt" or ".txt") or a comma-separated list
-#       (e.g., "txt,md" or ".py,.js"). If not specified, all file extensions are included.
-
-# Options:
-#   --out-file, -o <file>
-#       Name or path for the concatenated output file. Defaults to "concatOutput.txt".
-
-#   --out-dir, -d <dir>
-#       Directory where the output file will be saved. Defaults to current directory.
-
-#   --in-dir, -i <dir>
-#       Directory to search for files. Can be relative or absolute. Defaults to current directory.
-
-#   --exclude, -e <patterns>
-#       Comma-separated list of file or directory paths/patterns to exclude. Wildcards supported.
-
-#   --include, -I <patterns>
-#       Comma-separated list of file or directory paths/patterns to include. Wildcards supported.
-
-#   --ignore-ext, -E <exts>
-#       Comma-separated list of file extensions to ignore (e.g., "txt,log").
-#       Extensions can be prefixed with '.' or given as plain text.
-
-#   --recursive, -r
-#       Recursively search subdirectories. Default is true.
-
-#   --no-recursive, -R
-#       Disable recursive search.
-
-#   --title, -t
-#       Include a title line at the start of the output file. Default is true.
-
-#   --no-title, -T
-#       Exclude the title line from the output file.
-
-#   --verbose, -v
-#       Enable verbose output, showing matched files and other details.
-
-#   --case-ext, -c
-#       Match file extensions case-sensitively. Default is false.
-
-#   --case-exclude, -s
-#       Match exclude patterns case-sensitively. Default is false.
-
-#   --case-all, -a
-#       Enables case-sensitive matching for both extensions and exclude patterns,
-#       overriding the two options above. Default is false.
-
-#   --show-tree, -w
-#       Include a tree representation of directories in the output. Default is true.
-
-#   --no-tree, -W
-#       Disable the tree representation in the output (overrides --show-tree).
-
-#   --include-hidden, -H
-#       Include hidden files/directories in the search. Default is false.
-
-#   --no-hidden, -N
-#       Exclude hidden files/directories.
-
-#   --purge-pycache, -p
-#       Automatically delete '__pycache__' folders and '.pyc' files. Default is true.
-
-#   --no-purge-pycache, -P
-#       Disable automatic deletion of '__pycache__' and '.pyc' files.
-
-#   --ignore-binary, -b
-#       Automatically ignore unreadable or binary files from concatenation. Default is true.
-
-#   --include-binary, -B
-#       Include all files (overrides --ignore-binary).
-
-#   --debug, -x
-#       Enable debug mode with verbose execution tracing.
-
-#   --xml, -m
-#       Output the concatenation result in XML format instead of plain text.
-
-#   --help, -h
-#       Show this help message and exit.
-
-# Examples:
-#   concat .py --out-file allPython.txt --exclude __init__.py
-#   concat py,js -r -v
-#   concat --no-title --in-dir ~/project --out-dir ~/Desktop
+#
+# Combines the contents of files matching optional file extensions into a single output file.
+# Supports excluding/including specific paths, deleting Python cache files, generating a tree view,
+# and excluding binary/unreadable files. Both XML and plain-text outputs are supported.
 
 concat() {
 
-    # Display usage if -h or --help is provided.
+    # -------------------------------------------------------------------------
+    # Help Display
+    # -------------------------------------------------------------------------
+    # If a help flag is provided, output usage instructions and exit.
     for arg in "$@"; do
         if [[ "$arg" == "-h" || "$arg" == "--help" ]]; then
             cat <<EOF
@@ -196,16 +110,21 @@ Examples:
   concat .py --out-file allPython.txt --exclude __init__.py
   concat py,js -r -v
   concat --no-title --in-dir ~/project --out-dir ~/Desktop
+
 EOF
             return 0
         fi
     done
 
+    # -------------------------------------------------------------------------
+    # Save Original Arguments
+    # -------------------------------------------------------------------------
+    # Store the original command-line arguments for later use in output.
     originalArgs=("$@")
 
-    # ------------------------------
-    # Default Configuration
-    # ------------------------------
+    # -------------------------------------------------------------------------
+    # Set Default Configuration Values
+    # -------------------------------------------------------------------------
     outputFile="concatOutput.txt"
     outputDir="."
     inputDir="."
@@ -226,16 +145,18 @@ EOF
     excludeBinary=true
     xmlOutput=false
 
-    # ------------------------------
+    # -------------------------------------------------------------------------
     # Parse Command-Line Options
-    # ------------------------------
+    # -------------------------------------------------------------------------
     while (( $# )); do
         case "$1" in
+
             --debug|-x)
                 debug=true
-                set -x
+                set -x  # Enable shell debug mode.
                 shift
             ;;
+
             --out-file|-o)
                 if [[ -n "$2" && "$2" != --* ]]; then
                     outputFile="$2"
@@ -245,6 +166,7 @@ EOF
                     return 1
                 fi
             ;;
+
             --out-dir|-d)
                 if [[ -n "$2" && "$2" != --* ]]; then
                     outputDir="$2"
@@ -254,6 +176,7 @@ EOF
                     return 1
                 fi
             ;;
+
             --in-dir|-i)
                 if [[ -n "$2" && "$2" != --* ]]; then
                     inputDir="$2"
@@ -263,9 +186,11 @@ EOF
                     return 1
                 fi
             ;;
+
             --exclude|-e)
                 if [[ -n "$2" && "$2" != --* ]]; then
                     IFS=',' read -A tempExcludes <<< "$2"
+                    # Process each exclusion pattern.
                     for pattern in "${tempExcludes[@]}"; do
                         pattern=$(echo "$pattern" | sed 's/^[[:space:]]*//;s/[[:space:]]*$//')
                         excludePatterns+=("$pattern")
@@ -276,6 +201,7 @@ EOF
                     return 1
                 fi
             ;;
+
             --include|-I)
                 if [[ -n "$2" && "$2" != --* ]]; then
                     IFS=',' read -A tempIncludes <<< "$2"
@@ -289,11 +215,13 @@ EOF
                     return 1
                 fi
             ;;
+
             --ignore-ext|-E)
                 if [[ -n "$2" && "$2" != --* ]]; then
                     IFS=',' read -A rawExcludeExtensions <<< "$2"
                     for ext in "${rawExcludeExtensions[@]}"; do
                         ext=$(echo "$ext" | sed 's/^[[:space:]]*//;s/[[:space:]]*$//')
+                        # Ensure extension begins with a dot.
                         [[ "$ext" != .* ]] && ext=".$ext"
                         excludeExtensionsArray+=("$ext")
                     done
@@ -303,78 +231,97 @@ EOF
                     return 1
                 fi
             ;;
+
             --recursive|-r)
                 recursive=true
                 shift
             ;;
+
             --no-recursive|-R)
                 recursive=false
                 shift
             ;;
+
             --title|-t)
                 addTitle=true
                 shift
             ;;
+
             --no-title|-T)
                 addTitle=false
                 shift
             ;;
+
             --verbose|-v)
                 verbose=true
                 shift
             ;;
+
             --case-ext|-c)
                 caseSensitiveExtensions=true
                 shift
             ;;
+
             --case-exclude|-s)
                 caseSensitiveExcludes=true
                 shift
             ;;
+
             --case-all|-a)
                 caseSensitiveAll=true
                 shift
             ;;
+
             --show-tree|-w)
                 tree=true
                 shift
             ;;
+
             --no-tree|-W)
                 tree=false
                 shift
             ;;
+
             --include-hidden|-H)
                 includeHidden=true
                 shift
             ;;
+
             --no-hidden|-N)
                 includeHidden=false
                 shift
             ;;
+
             --purge-pycache|-p)
                 delPyCache=true
                 shift
             ;;
+
             --no-purge-pycache|-P)
                 delPyCache=false
                 shift
             ;;
+
             --ignore-binary|-b)
                 excludeBinary=true
                 shift
             ;;
+
             --include-binary|-B)
                 excludeBinary=false
                 shift
             ;;
+
             --xml|-m)
                 xmlOutput=true
                 shift
             ;;
+
             --*)
                 echo "Unknown option: $1"
                 return 1
             ;;
+
             *)
                 if [[ -z "$extensions" ]]; then
                     extensions="$1"
@@ -387,11 +334,15 @@ EOF
         esac
     done
 
+    # -------------------------------------------------------------------------
+    # Determine Input Directory Base Name
+    # -------------------------------------------------------------------------
     inputDirName="$(basename "$(realpath "$inputDir")")"
 
-    # ------------------------------
+    # -------------------------------------------------------------------------
     # Process Extensions
-    # ------------------------------
+    # -------------------------------------------------------------------------
+    # Convert the comma-separated extensions string into an array.
     if [[ -n "$extensions" ]]; then
         IFS=',' read -A rawExtensions <<< "$extensions"
         extensionsArray=()
@@ -404,17 +355,17 @@ EOF
         extensionsArray=()
     fi
 
-    # ------------------------------
-    # Determine Case Sensitivity
-    # ------------------------------
+    # -------------------------------------------------------------------------
+    # Adjust Case Sensitivity Settings
+    # -------------------------------------------------------------------------
     if [[ "$caseSensitiveAll" == true ]]; then
         caseSensitiveExtensions=true
         caseSensitiveExcludes=true
     fi
 
-    # ------------------------------
-    # Verbose Output of Configuration
-    # ------------------------------
+    # -------------------------------------------------------------------------
+    # Verbose: Output Configuration Summary
+    # -------------------------------------------------------------------------
     if [[ "$verbose" == true ]]; then
         echo "----------------------------------------"
         echo "Configuration:"
@@ -442,9 +393,9 @@ EOF
         echo "----------------------------------------"
     fi
 
-    # ------------------------------
-    # Prepare Output Directory and File
-    # ------------------------------
+    # -------------------------------------------------------------------------
+    # Prepare Output File and Directory
+    # -------------------------------------------------------------------------
     mkdir -p "$outputDir" || { echo "Error: Cannot create output directory '$outputDir'." >&2; return 1; }
     outputFilePath="$outputDir/$outputFile"
     if [[ -e "$outputFilePath" ]]; then
@@ -452,18 +403,18 @@ EOF
         rm "$fullOutputPath"
     fi
 
-    # ------------------------------
-    # Delete __pycache__ and .pyc Files
-    # ------------------------------
+    # -------------------------------------------------------------------------
+    # Delete Python Cache Files (.pyc and __pycache__)
+    # -------------------------------------------------------------------------
     if [[ "$delPyCache" == true ]]; then
         fullInputDir="$(realpath "$inputDir")"
         find "$fullInputDir" -type d -name "__pycache__" -print0 | xargs -0 rm -rf
         find "$fullInputDir" -type f -name "*.pyc" -print0 | xargs -0 rm -f
     fi
 
-    # ------------------------------
-    # Construct Find Command
-    # ------------------------------
+    # -------------------------------------------------------------------------
+    # Construct the 'find' Command to Locate Files
+    # -------------------------------------------------------------------------
     findCommand=("find" "$inputDir" "-type" "f")
     if [[ "$recursive" == false ]]; then
         findCommand+=("-maxdepth" "1")
@@ -480,9 +431,10 @@ EOF
         echo "Executing find command: ${findCommand[@]}"
     fi
 
-    # ------------------------------
-    # Helpers for hidden checks
-    # ------------------------------
+    # -------------------------------------------------------------------------
+    # Helper Function: IsPathHidden
+    # -------------------------------------------------------------------------
+    # Returns 0 (true) if the given path is hidden.
     IsPathHidden() {
         local path="$1"
         [[ $path == */.* ]] && return 0
@@ -493,6 +445,9 @@ EOF
         return 1
     }
 
+    # -------------------------------------------------------------------------
+    # Find and Filter Files
+    # -------------------------------------------------------------------------
     matchedFiles=()
     foundFiles=("${(@f)$( "${findCommand[@]}" )}")
     totalFound=${#foundFiles[@]}
@@ -500,6 +455,8 @@ EOF
 
     for file in "${foundFiles[@]}"; do
         currentScan=$(( currentScan + 1 ))
+
+        # Update progress bar if available (only in non-XML mode).
         if [[ "$xmlOutput" == false ]]; then
             if type UpdateScanProgressBar >/dev/null 2>&1; then
                 UpdateScanProgressBar "$currentScan" "$totalFound"
@@ -508,6 +465,7 @@ EOF
 
         fullPath="$(realpath "$file")"
 
+        # Skip hidden files if includeHidden is false.
         if IsPathHidden "$fullPath" && [[ "$includeHidden" == false ]]; then
             continue
         fi
@@ -515,6 +473,7 @@ EOF
         fileExt=".${file##*.}"
         skipFile=false
 
+        # Exclude files with specific extensions.
         if [[ ${#excludeExtensionsArray[@]} -gt 0 ]]; then
             if [[ "$caseSensitiveExtensions" == false ]]; then
                 fileExtLower="${fileExt:l}"
@@ -533,10 +492,10 @@ EOF
                     fi
                 done
             fi
-
             $skipFile && continue
         fi
 
+        # If extensions are specified, check if the file matches.
         if [[ ${#extensionsArray[@]} -gt 0 ]]; then
             foundMatchingExt=false
             if [[ "$caseSensitiveExtensions" == false ]]; then
@@ -556,12 +515,12 @@ EOF
                     fi
                 done
             fi
-
             if [[ "$foundMatchingExt" == false ]]; then
                 continue
             fi
         fi
 
+        # Exclude unreadable or binary files if requested.
         if [[ "$excludeBinary" == true ]]; then
             if [[ ! -r "$file" ]]; then
                 skipFile=true
@@ -573,6 +532,7 @@ EOF
             $skipFile && continue
         fi
 
+        # Apply include patterns if provided.
         if [[ ${#includePatterns[@]} -gt 0 ]]; then
             includeFile=false
             for pattern in "${includePatterns[@]}"; do
@@ -594,6 +554,7 @@ EOF
             fi
         fi
 
+        # Add the file to the matched list.
         matchedFiles+=("$file")
         if [[ "$verbose" == true ]]; then
             echo "Matched file: $file"
@@ -604,20 +565,31 @@ EOF
         echo "Total matched files: ${#matchedFiles[@]}"
     fi
 
+    # -------------------------------------------------------------------------
+    # Build Directory Tree Representation
+    # -------------------------------------------------------------------------
     if [[ "$tree" == true ]]; then
         tempInputDir="$inputDir"
+        # Normalize the input directory path.
         tempInputDir="${tempInputDir/#.\//}"
         tempInputDir="${tempInputDir%/}"
         fullTree="$(tree "$tempInputDir")"
+        # Remove the header line from the tree output.
         fullTree=$(sed '1d' <<< "$fullTree")
     fi
 
+    # -------------------------------------------------------------------------
+    # XML Output Block
+    # -------------------------------------------------------------------------
     if [[ "$xmlOutput" == true ]]; then
     {
         fullCommand=$(printf '%q ' "${originalArgs[@]}")
         fullCommand=${fullCommand% }
+
         echo '<?xml version="1.0" encoding="UTF-8"?>'
         echo '<ConcatOutput>'
+
+        # Title Section
         if [[ "$addTitle" == true ]]; then
             echo "  <Title>"
             if $recursive; then
@@ -628,8 +600,8 @@ EOF
             echo "  </Title>"
         fi
 
+        # Command and Parameters Section
         echo "  <Command>concat ${fullCommand}</Command>"
-
         echo "  <Parameters>"
         echo "    <Extensions>"
         if [[ ${#extensionsArray[@]} -eq 0 ]]; then
@@ -669,6 +641,8 @@ EOF
         echo "    </OtherOptions>"
         echo "    <TotalMatchedFiles>${#matchedFiles[@]}</TotalMatchedFiles>"
         echo "  </Parameters>"
+
+        # Matched Files Directory Structure List
         echo "    <MatchedFilesDirectoryStructureList>"
         typeset -A matchedDirMap
         fullInputDir="$(realpath "$inputDir")"
@@ -693,6 +667,8 @@ EOF
             echo "      <DirectoryEntry>\"$relativeDir\": [${matchedDirMap[$dir]}]</DirectoryEntry>"
         done | sort
         echo "    </MatchedFilesDirectoryStructureList>"
+
+        # Tree Representation and Full Directory Structure List
         echo "  <TreeOutput>"
         echo "    <TreeRepresentation>"
         tempInputDir="$inputDir"
@@ -703,6 +679,7 @@ EOF
         echo "$fullTree"
         echo "]]></Tree>"
         echo "    </TreeRepresentation>"
+
         echo "    <DirectoryStructureList>"
         typeset -A dirMap
         fullOutputPath="$(realpath "$outputFilePath")"
@@ -744,6 +721,7 @@ EOF
         echo "    </DirectoryStructureList>"
         echo "  </TreeOutput>"
 
+        # File Contents Section
         echo "  <FileContents>"
         totalFiles=${#matchedFiles[@]}
         if [[ $totalFiles -gt 0 ]]; then
@@ -752,7 +730,7 @@ EOF
                 ((currentFile++))
                 if [[ "$xmlOutput" == false ]]; then
                     if type UpdateProgressBar >/dev/null 2>&1; then
-                        UpdateProgressBar "$currentFile" "$totalFiles"
+                        UpdateScanProgressBar "$currentFile" "$totalFiles"
                     fi
                 fi
                 relativePath="${file#$inputDir/}"
@@ -776,12 +754,19 @@ EOF
             echo "    <Message>No files to concatenate.</Message>"
         fi
         echo "  </FileContents>"
+
         echo "</ConcatOutput>"
     } > "$outputFilePath"
+
+    # -------------------------------------------------------------------------
+    # Non-XML Output Block
+    # -------------------------------------------------------------------------
     else
     {
         fullCommand=$(printf '%q ' "${originalArgs[@]}")
         fullCommand=${fullCommand% }
+
+        # Title Section
         if [[ "$addTitle" == true ]]; then
             if $recursive; then
                 echo "Contents of '$inputDirName' and its subdirectories"
@@ -792,6 +777,7 @@ EOF
             echo ""
         fi
 
+        # Command and Parameters Summary
         echo "--------------------------------------------------------------------------------"
         echo "Full command: \"concat ${fullCommand}\""
         echo "Parameters:"
@@ -825,6 +811,8 @@ EOF
         echo "Total matched files: ${#matchedFiles[@]}"
         echo "================================================================================"
         echo ""
+
+        # Directory Structure List (Matched Files Only)
         echo "--------------------------------------------------------------------------------"
         echo "# Directory Structure List (Matched Files Only)"
         echo "********************************************************************************"
@@ -852,6 +840,8 @@ EOF
         done | sort
         echo "================================================================================"
         echo ""
+
+        # Tree Representation and Directory Structure List
         if [[ "$tree" == true ]]; then
             tempInputDir="$inputDir"
             tempInputDir="${tempInputDir/#.\//}"
@@ -901,7 +891,7 @@ EOF
                 if [[ "$dir" == "$inputDir" ]]; then
                     relativeDir="$inputDir"
                 else
-                    relativeDir="${dir#$fullInputDir/}"
+                    relativeDir="$inputDirName/${dir#$fullInputDir/}"
                 fi
                 if [[ "$relativeDir" == "\".\"" ]]; then
                     relativeDir="\"$inputDirName\""
@@ -913,53 +903,58 @@ EOF
             done | sort
             echo "================================================================================"
             echo ""
-            echo "--------------------------------------------------------------------------------"
-            echo "# File Contents"
-            echo "********************************************************************************"
-            totalFiles=${#matchedFiles[@]}
-            if [[ $totalFiles -gt 0 ]]; then
-                currentFile=0
-                for file in "${matchedFiles[@]}"; do
-                    ((currentFile++))
-                    if type UpdateProgressBar >/dev/null 2>&1; then
-                        UpdateProgressBar "$currentFile" "$totalFiles"
-                    fi
-                    relativePath="${file#$inputDir/}"
-                    relativePath="${inputDirName}/${relativePath}"
-                    absolutePath=$(realpath "$file")
-                    filename="$(basename "$file")"
+        fi
+
+        # File Contents Section
+        echo "--------------------------------------------------------------------------------"
+        echo "# File Contents"
+        echo "********************************************************************************"
+        totalFiles=${#matchedFiles[@]}
+        if [[ $totalFiles -gt 0 ]]; then
+            currentFile=0
+            for file in "${matchedFiles[@]}"; do
+                ((currentFile++))
+                if type UpdateProgressBar >/dev/null 2>&1; then
+                    UpdateProgressBar "$currentFile" "$totalFiles"
+                fi
+                relativePath="${file#$inputDir/}"
+                relativePath="${inputDirName}/${relativePath}"
+                absolutePath=$(realpath "$file")
+                filename="$(basename "$file")"
+                echo ""
+                echo "--------------------------------------------------------------------------------"
+                echo "# Filename: \"$filename\""
+                echo "# Relative to Input Dir: \"$relativePath\""
+                echo "# Absolute Path: \"$absolutePath\""
+                echo "********************************************************************************"
+                echo "# Start of Content in \"$file\":"
+                if [[ -r "$file" ]]; then
+                    cat "$file"
                     echo ""
-                    echo "--------------------------------------------------------------------------------"
-                    echo "# Filename: \"$filename\""
-                    echo "# Relative to Input Dir: \"$relativePath\""
-                    echo "# Absolute Path: \"$absolutePath\""
-                    echo "********************************************************************************"
-                    echo "# Start of Content in \"$file\":"
-                    if [[ -r "$file" ]]; then
-                        cat "$file"
-                        echo ""
-                        echo "# EOF: $file"
-                        echo "================================================================================"
-                    else
-                        echo "Error: Cannot read file '$file'." >&2
-                    fi
-                    if [[ "$file" != "${matchedFiles[-1]}" ]]; then
-                        echo ""
-                    fi
-                done
-            else
-                echo "No files to concatenate."
-            fi
+                    echo "# EOF: $file"
+                    echo "================================================================================"
+                else
+                    echo "Error: Cannot read file '$file'." >&2
+                fi
+                if [[ "$file" != "${matchedFiles[-1]}" ]]; then
+                    echo ""
+                fi
+            done
+        else
+            echo "No files to concatenate."
         fi
     } > "$outputFilePath"
     fi
 
+    # -------------------------------------------------------------------------
+    # Final Status Message and Cleanup
+    # -------------------------------------------------------------------------
     if [[ "$verbose" == true ]]; then
         echo "All files have been concatenated into '$outputFilePath'."
     fi
 
     if [[ "$debug" == true ]]; then
-        set +x
+        set +x  # Disable debug mode.
     fi
 
     return 0
