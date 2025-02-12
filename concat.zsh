@@ -516,7 +516,6 @@ EOF
         skipFile=false
 
         if [[ ${#excludeExtensionsArray[@]} -gt 0 ]]; then
-
             if [[ "$caseSensitiveExtensions" == false ]]; then
                 fileExtLower="${fileExt:l}"
                 for exExt in "${excludeExtensionsArray[@]}"; do
@@ -540,7 +539,6 @@ EOF
 
         if [[ ${#extensionsArray[@]} -gt 0 ]]; then
             foundMatchingExt=false
-
             if [[ "$caseSensitiveExtensions" == false ]]; then
                 fileExtLower="${fileExt:l}"
                 for ext in "${extensionsArray[@]}"; do
@@ -565,7 +563,6 @@ EOF
         fi
 
         if [[ "$excludeBinary" == true ]]; then
-
             if [[ ! -r "$file" ]]; then
                 skipFile=true
             else
@@ -573,7 +570,6 @@ EOF
                     skipFile=true
                 fi
             fi
-
             $skipFile && continue
         fi
 
@@ -673,64 +669,80 @@ EOF
         echo "    </OtherOptions>"
         echo "    <TotalMatchedFiles>${#matchedFiles[@]}</TotalMatchedFiles>"
         echo "  </Parameters>"
-        if [[ "$tree" == true ]]; then
-            echo "  <TreeOutput>"
-            echo "    <TreeRepresentation>"
-            tempInputDir="$inputDir"
-            tempInputDir="${tempInputDir/#.\//}"
-            tempInputDir="${tempInputDir%/}"
-            echo "      <Directory>$(basename "$(realpath "$tempInputDir")")</Directory>"
-            echo "      <Tree><![CDATA["
-            echo "$fullTree"
-            echo "]]></Tree>"
-            echo "    </TreeRepresentation>"
-            echo "    <DirectoryStructureList>"
-            typeset -A dirMap
-            fullOutputPath="$(realpath "$outputFilePath")"
-            while IFS= read -r dir; do
-                fullPath="$(realpath "$dir")"
-                if IsPathHidden "$fullPath" && [[ "$includeHidden" == false ]]; then
+        echo "  <TreeOutput>"
+        echo "    <TreeRepresentation>"
+        tempInputDir="$inputDir"
+        tempInputDir="${tempInputDir/#.\//}"
+        tempInputDir="${tempInputDir%/}"
+        echo "      <Directory>$(basename "$(realpath "$tempInputDir")")</Directory>"
+        echo "      <Tree><![CDATA["
+        echo "$fullTree"
+        echo "]]></Tree>"
+        echo "    </TreeRepresentation>"
+        echo "    <DirectoryStructureList>"
+        typeset -A dirMap
+        fullOutputPath="$(realpath "$outputFilePath")"
+        while IFS= read -r dir; do
+            fullPath="$(realpath "$dir")"
+            if IsPathHidden "$fullPath" && [[ "$includeHidden" == false ]]; then
+                continue
+            fi
+            children=("${(@f)$(find "$dir" -mindepth 1 -maxdepth 1 | sort)}")
+            childrenBase=()
+            for child in "${children[@]}"; do
+                if [[ -z "$child" ]]; then
                     continue
                 fi
-                children=("${(@f)$(find "$dir" -mindepth 1 -maxdepth 1 | sort)}")
-                childrenBase=()
-                for child in "${children[@]}"; do
-                    if [[ -z "$child" ]]; then
-                        continue
-                    fi
-                    fullChildPath="$(realpath "$child")"
-                    if IsPathHidden "$fullChildPath" && [[ "$includeHidden" == false ]]; then
-                        continue
-                    elif [[ "$fullChildPath" == "$fullOutputPath" ]]; then
-                        continue
-                    fi
-                    childrenBase+=("$(basename "$child")")
-                done
-                if [[ ${#childrenBase[@]} -gt 0 ]]; then
-                    childrenStr=$(printf ", %s" "${childrenBase[@]}")
-                    childrenStr="${childrenStr:2}"
-                    dirMap["$dir"]="[\"$childrenStr\"]"
+                fullChildPath="$(realpath "$child")"
+                if IsPathHidden "$fullChildPath" && [[ "$includeHidden" == false ]]; then
+                    continue
+                elif [[ "$fullChildPath" == "$fullOutputPath" ]]; then
+                    continue
+                fi
+                childrenBase+=("$(basename "$child")")
+            done
+            if [[ ${#childrenBase[@]} -gt 0 ]]; then
+                childrenStr=$(printf ", %s" "${childrenBase[@]}")
+                childrenStr="${childrenStr:2}"
+                dirMap["$dir"]="[\"$childrenStr\"]"
+            else
+                dirMap["$dir"]="[]"
+            fi
+        done < <(find "$inputDir" -type d | sort)
+        for dir in ${(k)dirMap}; do
+            if [[ "$dir" == "$inputDir" ]]; then
+                relativeDir="$inputDirName"
+            else
+                relativeDir="$inputDirName/${dir#$fullInputDir/}"
+            fi
+            echo "      <DirectoryEntry>$relativeDir: ${dirMap[$dir]}</DirectoryEntry>"
+        done | sort
+        echo "    </DirectoryStructureList>"
+        echo "    <MatchedFilesDirectoryStructureList>"
+        typeset -A matchedDirMap
+        fullInputDir="$(realpath "$inputDir")"
+        for file in "${matchedFiles[@]}"; do
+            fileFullPath="$(realpath "$file")"
+            dir=$(dirname "$fileFullPath")
+            base=$(basename "$fileFullPath")
+            if [[ -n "$base" ]]; then
+                if [[ -n "${matchedDirMap[$dir]}" ]]; then
+                    matchedDirMap[$dir]="${matchedDirMap[$dir]}, $base"
                 else
-                    dirMap["$dir"]="[]"
+                    matchedDirMap[$dir]="$base"
                 fi
-            done < <(find "$inputDir" -type d | sort)
-            for dir in ${(k)dirMap}; do
-                if [[ "$dir" == "$inputDir" ]]; then
-                    relativeDir="$inputDir"
-                else
-                    relativeDir="${dir#$fullInputDir/}"
-                fi
-                if [[ "$relativeDir" == "\".\"" ]]; then
-                    relativeDir="\"$inputDirName\""
-                elif [[ "$relativeDir" == "\"./"* ]]; then
-                    remainingRelativeDir="${relativeDir#\"./}"
-                    relativeDir="\"${inputDirName}/${remainingRelativeDir}"
-                fi
-                echo "      <DirectoryEntry>$relativeDir: ${dirMap[$dir]}</DirectoryEntry>"
-            done | sort
-            echo "    </DirectoryStructureList>"
-            echo "  </TreeOutput>"
-        fi
+            fi
+        done
+        for dir in ${(k)matchedDirMap}; do
+            if [[ "$dir" == "$fullInputDir" ]]; then
+                relativeDir="$inputDirName"
+            else
+                relativeDir="$inputDirName/${dir#$fullInputDir/}"
+            fi
+            echo "      <DirectoryEntry>\"$relativeDir\": [\"${matchedDirMap[$dir]}\"]</DirectoryEntry>"
+        done | sort
+        echo "    </MatchedFilesDirectoryStructureList>"
+        echo "  </TreeOutput>"
 
         echo "  <FileContents>"
         totalFiles=${#matchedFiles[@]}
@@ -853,7 +865,7 @@ EOF
                 if [[ ${#childrenBase[@]} -gt 0 ]]; then
                     childrenStr=$(printf ", %s" "${childrenBase[@]}")
                     childrenStr="${childrenStr:2}"
-                    dirMap["$dir"]="[\"$childrenStr\"]"
+                    dirMap["$dir"]="[$childrenStr]"
                 else
                     dirMap["$dir"]="[]"
                 fi
@@ -871,6 +883,33 @@ EOF
                     relativeDir="\"${inputDirName}/${remainingRelativeDir}"
                 fi
                 echo "$relativeDir: ${dirMap[$dir]}"
+            done | sort
+            echo "================================================================================"
+            echo ""
+            echo "--------------------------------------------------------------------------------"
+            echo "# Directory Structure List (Matched Files Only)"
+            echo "********************************************************************************"
+            typeset -A matchedDirMap
+            fullInputDir="$(realpath "$inputDir")"
+            for file in "${matchedFiles[@]}"; do
+                fileFullPath="$(realpath "$file")"
+                dir=$(dirname "$fileFullPath")
+                base=$(basename "$fileFullPath")
+                if [[ -n "$base" ]]; then
+                    if [[ -n "${matchedDirMap[$dir]}" ]]; then
+                        matchedDirMap[$dir]="${matchedDirMap[$dir]}, $base"
+                    else
+                        matchedDirMap[$dir]="$base"
+                    fi
+                fi
+            done
+            for dir in ${(k)matchedDirMap}; do
+                if [[ "$dir" == "$fullInputDir" ]]; then
+                    relativeDir="$inputDirName"
+                else
+                    relativeDir="$inputDirName/${dir#$fullInputDir/}"
+                fi
+                echo "\"$relativeDir\": [${matchedDirMap[$dir]}]"
             done | sort
             echo "================================================================================"
             echo ""
