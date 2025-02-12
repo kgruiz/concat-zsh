@@ -669,6 +669,30 @@ EOF
         echo "    </OtherOptions>"
         echo "    <TotalMatchedFiles>${#matchedFiles[@]}</TotalMatchedFiles>"
         echo "  </Parameters>"
+        echo "    <MatchedFilesDirectoryStructureList>"
+        typeset -A matchedDirMap
+        fullInputDir="$(realpath "$inputDir")"
+        for file in "${matchedFiles[@]}"; do
+            fileFullPath="$(realpath "$file")"
+            dir=$(dirname "$fileFullPath")
+            base=$(basename "$fileFullPath")
+            if [[ -n "$base" ]]; then
+                if [[ -n "${matchedDirMap[$dir]}" ]]; then
+                    matchedDirMap[$dir]="${matchedDirMap[$dir]}, $base"
+                else
+                    matchedDirMap[$dir]="$base"
+                fi
+            fi
+        done
+        for dir in ${(k)matchedDirMap}; do
+            if [[ "$dir" == "$fullInputDir" ]]; then
+                relativeDir="$inputDirName"
+            else
+                relativeDir="$inputDirName/${dir#$fullInputDir/}"
+            fi
+            echo "      <DirectoryEntry>\"$relativeDir\": [${matchedDirMap[$dir]}]</DirectoryEntry>"
+        done | sort
+        echo "    </MatchedFilesDirectoryStructureList>"
         echo "  <TreeOutput>"
         echo "    <TreeRepresentation>"
         tempInputDir="$inputDir"
@@ -718,30 +742,6 @@ EOF
             echo "      <DirectoryEntry>$relativeDir: ${dirMap[$dir]}</DirectoryEntry>"
         done | sort
         echo "    </DirectoryStructureList>"
-        echo "    <MatchedFilesDirectoryStructureList>"
-        typeset -A matchedDirMap
-        fullInputDir="$(realpath "$inputDir")"
-        for file in "${matchedFiles[@]}"; do
-            fileFullPath="$(realpath "$file")"
-            dir=$(dirname "$fileFullPath")
-            base=$(basename "$fileFullPath")
-            if [[ -n "$base" ]]; then
-                if [[ -n "${matchedDirMap[$dir]}" ]]; then
-                    matchedDirMap[$dir]="${matchedDirMap[$dir]}, $base"
-                else
-                    matchedDirMap[$dir]="$base"
-                fi
-            fi
-        done
-        for dir in ${(k)matchedDirMap}; do
-            if [[ "$dir" == "$fullInputDir" ]]; then
-                relativeDir="$inputDirName"
-            else
-                relativeDir="$inputDirName/${dir#$fullInputDir/}"
-            fi
-            echo "      <DirectoryEntry>\"$relativeDir\": [\"${matchedDirMap[$dir]}\"]</DirectoryEntry>"
-        done | sort
-        echo "    </MatchedFilesDirectoryStructureList>"
         echo "  </TreeOutput>"
 
         echo "  <FileContents>"
@@ -825,6 +825,33 @@ EOF
         echo "Total matched files: ${#matchedFiles[@]}"
         echo "================================================================================"
         echo ""
+        echo "--------------------------------------------------------------------------------"
+        echo "# Directory Structure List (Matched Files Only)"
+        echo "********************************************************************************"
+        typeset -A matchedDirMap
+        fullInputDir="$(realpath "$inputDir")"
+        for file in "${matchedFiles[@]}"; do
+            fileFullPath="$(realpath "$file")"
+            dir=$(dirname "$fileFullPath")
+            base=$(basename "$fileFullPath")
+            if [[ -n "$base" ]]; then
+                if [[ -n "${matchedDirMap[$dir]}" ]]; then
+                    matchedDirMap[$dir]="${matchedDirMap[$dir]}, $base"
+                else
+                    matchedDirMap[$dir]="$base"
+                fi
+            fi
+        done
+        for dir in ${(k)matchedDirMap}; do
+            if [[ "$dir" == "$fullInputDir" ]]; then
+                relativeDir="$inputDirName"
+            else
+                relativeDir="$inputDirName/${dir#$fullInputDir/}"
+            fi
+            echo "\"$relativeDir\": [${matchedDirMap[$dir]}]"
+        done | sort
+        echo "================================================================================"
+        echo ""
         if [[ "$tree" == true ]]; then
             tempInputDir="$inputDir"
             tempInputDir="${tempInputDir/#.\//}"
@@ -865,7 +892,7 @@ EOF
                 if [[ ${#childrenBase[@]} -gt 0 ]]; then
                     childrenStr=$(printf ", %s" "${childrenBase[@]}")
                     childrenStr="${childrenStr:2}"
-                    dirMap["$dir"]="[$childrenStr]"
+                    dirMap["$dir"]="[\"$childrenStr\"]"
                 else
                     dirMap["$dir"]="[]"
                 fi
@@ -883,33 +910,6 @@ EOF
                     relativeDir="\"${inputDirName}/${remainingRelativeDir}"
                 fi
                 echo "$relativeDir: ${dirMap[$dir]}"
-            done | sort
-            echo "================================================================================"
-            echo ""
-            echo "--------------------------------------------------------------------------------"
-            echo "# Directory Structure List (Matched Files Only)"
-            echo "********************************************************************************"
-            typeset -A matchedDirMap
-            fullInputDir="$(realpath "$inputDir")"
-            for file in "${matchedFiles[@]}"; do
-                fileFullPath="$(realpath "$file")"
-                dir=$(dirname "$fileFullPath")
-                base=$(basename "$fileFullPath")
-                if [[ -n "$base" ]]; then
-                    if [[ -n "${matchedDirMap[$dir]}" ]]; then
-                        matchedDirMap[$dir]="${matchedDirMap[$dir]}, $base"
-                    else
-                        matchedDirMap[$dir]="$base"
-                    fi
-                fi
-            done
-            for dir in ${(k)matchedDirMap}; do
-                if [[ "$dir" == "$fullInputDir" ]]; then
-                    relativeDir="$inputDirName"
-                else
-                    relativeDir="$inputDirName/${dir#$fullInputDir/}"
-                fi
-                echo "\"$relativeDir\": [${matchedDirMap[$dir]}]"
             done | sort
             echo "================================================================================"
             echo ""
