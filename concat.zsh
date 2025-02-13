@@ -5,7 +5,7 @@
 #
 # Combines the contents of files matching optional file extensions into a single output file.
 # Supports excluding/including specific paths, deleting Python cache files, generating a tree view,
-# and excluding binary/unreadable files. Both XML and plain-text outputs are supported.
+# and excluding non-text/unreadable files. Both XML and plain-text outputs are supported.
 
 concat() {
 
@@ -48,8 +48,8 @@ Filtering:
   -H, --hidden
       Include hidden files and directories (default: ignore hidden files and directories).
 
-  -B, --binary
-      Include binary files (default: ignore binary files).
+  -n, --non-text
+      Include non-text files (default: ignore non-text files).
 
 Behavior Control:
   -R, --no-recursive
@@ -73,7 +73,7 @@ Miscellaneous:
       Do not delete \`__pycache__\` directories and \`.pyc\` files.
 
   -v, --verbose
-      Show detailed output, including matched files.
+      Show detailed output, including matched and skipped files.
 
   -d, --debug
       Enable debug mode with execution tracing.
@@ -109,7 +109,7 @@ EOF
     includeHidden=false
     delPyCache=true
     debug=false
-    excludeBinary=true
+    excludeNonText=true
     xmlOutput=false
 
     # -------------------------------------------------------------------------
@@ -199,8 +199,8 @@ EOF
                 shift
             ;;
 
-            --binary|-B)
-                excludeBinary=false
+            --non-text|-n)
+                excludeNonText=false
                 shift
             ;;
 
@@ -309,7 +309,7 @@ EOF
         echo "Tree Output: $tree"
         echo "Include Hidden: $includeHidden"
         echo "Purge Pycache: $delPyCache"
-        echo "Ignore Binary: $excludeBinary"
+        echo "Ignore Non-Text: $excludeNonText"
         echo "Debug Mode: $debug"
         echo "----------------------------------------"
     fi
@@ -384,6 +384,9 @@ EOF
 
         # Skip hidden files if includeHidden is false.
         if IsPathHidden "$fullPath" && [[ "$includeHidden" == false ]]; then
+            if [[ "$verbose" == true ]]; then
+                echo "Skipped file: $file (hidden)"
+            fi
             continue
         fi
 
@@ -409,7 +412,12 @@ EOF
                     fi
                 done
             fi
-            $skipFile && continue
+            if $skipFile; then
+                if [[ "$verbose" == true ]]; then
+                    echo "Skipped file: $file (ignored extension)"
+                fi
+                continue
+            fi
         fi
 
         # If extensions are specified, check if the file matches.
@@ -433,20 +441,39 @@ EOF
                 done
             fi
             if [[ "$foundMatchingExt" == false ]]; then
+                if [[ "$verbose" == true ]]; then
+                    echo "Skipped file: $file (extension not matched)"
+                fi
                 continue
             fi
         fi
 
-        # Exclude unreadable or binary files if requested.
-        if [[ "$excludeBinary" == true ]]; then
-            if [[ ! -r "$file" ]]; then
-                skipFile=true
-            else
-                if ! grep -Iq . "$file" 2>/dev/null; then
+        # Exclude unreadable or non-text files if requested.
+        if [[ "$excludeNonText" == true ]]; then
+            # Check if file extension is in known non-text list.
+            lowerExt="${fileExt:l}"
+            nonTextExts=(".pdf" ".png" ".jpg" ".jpeg" ".gif" ".bmp" ".tiff" ".ico" ".zip" ".rar" ".7z" ".exe" ".dll")
+            for ntExt in "${nonTextExts[@]}"; do
+                if [[ "$lowerExt" == "$ntExt" ]]; then
                     skipFile=true
+                    break
+                fi
+            done
+            if ! $skipFile; then
+                if [[ ! -r "$file" ]]; then
+                    skipFile=true
+                else
+                    if ! grep -Iq . "$file" 2>/dev/null; then
+                        skipFile=true
+                    fi
                 fi
             fi
-            $skipFile && continue
+            if $skipFile; then
+                if [[ "$verbose" == true ]]; then
+                    echo "Skipped file: $file (non-text or unreadable)"
+                fi
+                continue
+            fi
         fi
 
         # Apply include patterns if provided.
@@ -467,6 +494,9 @@ EOF
                 fi
             done
             if [[ "$includeFile" == false ]]; then
+                if [[ "$verbose" == true ]]; then
+                    echo "Skipped file: $file (include pattern not matched)"
+                fi
                 continue
             fi
         fi
@@ -639,7 +669,7 @@ EOF
                 ((currentFile++))
                 if [[ "$xmlOutput" == false ]]; then
                     if type UpdateProgressBar >/dev/null 2>&1; then
-                        UpdateScanProgressBar "$currentFile" "$totalFound"
+                        UpdateScanProgressBar "$currentFile" "$totalFiles"
                     fi
                 fi
                 relativePath="${file#$inputDir/}"
@@ -716,7 +746,7 @@ EOF
         echo "  - Recursive Search: $recursive"
         echo "  - Include Hidden: $includeHidden"
         echo "  - Purge Pycache: $delPyCache"
-        echo "  - Ignore Binary: $excludeBinary"
+        echo "  - Ignore Non-Text: $excludeNonText"
         echo "- - - - - - - - - - - - - - - - - - - -"
         echo "Total matched files: ${#matchedFiles[@]}"
         echo "================================================================================"
