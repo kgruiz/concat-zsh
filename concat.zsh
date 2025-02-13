@@ -45,11 +45,11 @@ Filtering:
       Ignore files with these extensions (e.g., "log,bin,.tmp").
       Extensions can be prefixed with '.' or written as plain text.
 
-  -H, --no-hidden
-      Skip hidden files and directories.
+  -H, --hidden
+      Include hidden files and directories (default: ignore hidden files and directories).
 
-  -B, --no-binary
-      Ignore unreadable or binary files.
+  -B, --binary
+      Include binary files (default: ignore binary files).
 
 Behavior Control:
   -R, --no-recursive
@@ -106,10 +106,10 @@ EOF
     caseSensitive=false
     tree=true
     extensions=""
-    includeHidden=true
+    includeHidden=false
     delPyCache=true
     debug=false
-    excludeBinary=false
+    excludeBinary=true
     xmlOutput=false
 
     # -------------------------------------------------------------------------
@@ -194,13 +194,13 @@ EOF
                 fi
             ;;
 
-            --no-hidden|-H)
-                includeHidden=false
+            --hidden|-H)
+                includeHidden=true
                 shift
             ;;
 
-            --no-binary|-B)
-                excludeBinary=true
+            --binary|-B)
+                excludeBinary=false
                 shift
             ;;
 
@@ -639,7 +639,7 @@ EOF
                 ((currentFile++))
                 if [[ "$xmlOutput" == false ]]; then
                     if type UpdateProgressBar >/dev/null 2>&1; then
-                        UpdateScanProgressBar "$currentFile" "$totalFiles"
+                        UpdateScanProgressBar "$currentFile" "$totalFound"
                     fi
                 fi
                 relativePath="${file#$inputDir/}"
@@ -825,7 +825,7 @@ EOF
             for file in "${matchedFiles[@]}"; do
                 ((currentFile++))
                 if type UpdateProgressBar >/dev/null 2>&1; then
-                    UpdateProgressBar "$currentFile" "$totalFiles"
+                    UpdateProgressBar "$currentFile" "$totalFound"
                 fi
                 relativePath="${file#$inputDir/}"
                 relativePath="${inputDirName}/${relativePath}"
