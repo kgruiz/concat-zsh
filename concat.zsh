@@ -16,101 +16,70 @@ concat() {
     for arg in "$@"; do
         if [[ "$arg" == "-h" || "$arg" == "--help" ]]; then
             cat <<EOF
-Usage: concat [extensions] [OPTIONS]
+concat [extensions] [OPTIONS]
 
-Combines the contents of files that match a set of optional file extensions
-into a single output file. Also supports excluding or including paths, deleting
-Python cache directories, generating a tree view, and more. Now also supports
-excluding binary or unreadable files if desired.
-
-Arguments:
+Positional Argument:
   [extensions]
-      Either a single extension (e.g., "txt" or ".txt") or a comma-separated list
-      (e.g., "txt,md" or ".py,.js"). If not specified, all file extensions are included.
+      One or more file extensions to match (e.g., "txt" or ".txt").
+      Comma-separated lists are allowed (e.g., "txt,md,.log").
+      If omitted, all file extensions are included.
 
-Options:
-  --out-file, -o <file>
-      Name or path for the concatenated output file. Defaults to "concatOutput.txt".
+Input/Output:
+  -i, --input <dir>
+      Directory to search for files (default: current directory).
 
-  --out-dir, -d <dir>
-      Directory where the output file will be saved. Defaults to current directory.
+  -o, --output <file>
+      Name or path of the concatenated output file (default: "concatOutput.txt").
 
-  --in-dir, -i <dir>
-      Directory to search for files. Can be relative or absolute. Defaults to current directory.
+  -D, --output-dir <dir>
+      Directory to save the output file (default: current directory).
 
-  --exclude, -e <patterns>
-      Comma-separated list of file or directory paths/patterns to exclude. Wildcards supported.
+Filtering:
+  -e, --exclude <patterns>
+      Exclude files or directories matching these patterns (wildcards supported).
 
-  --include, -I <patterns>
-      Comma-separated list of file or directory paths/patterns to include. Wildcards supported.
+  -I, --include <patterns>
+      Only include files or directories matching these patterns (wildcards supported).
 
-  --ignore-ext, -E <exts>
-      Comma-separated list of file extensions to ignore (e.g., "txt,log").
-      Extensions can be prefixed with '.' or given as plain text.
+  -E, --ignore-ext <exts>
+      Ignore files with these extensions (e.g., "log,bin,.tmp").
+      Extensions can be prefixed with '.' or written as plain text.
 
-  --recursive, -r
-      Recursively search subdirectories. Default is true.
+  -H, --no-hidden
+      Skip hidden files and directories.
 
-  --no-recursive, -R
-      Disable recursive search.
+  -B, --no-binary
+      Ignore unreadable or binary files.
 
-  --title, -t
-      Include a title line at the start of the output file. Default is true.
+Behavior Control:
+  -R, --no-recursive
+      Disable searching in subdirectories (default is recursive search).
 
-  --no-title, -T
-      Exclude the title line from the output file.
+  -C, --case-sensitive
+      Enable case-sensitive matching for extensions and exclude patterns.
 
-  --verbose, -v
-      Enable verbose output, showing matched files and other details.
+Formatting:
+  -T, --no-title
+      Do not add a title/header line at the start of the output file.
 
-  --case-ext, -c
-      Match file extensions case-sensitively. Default is false.
+  -x, --xml
+      Format the output as XML instead of plain text.
 
-  --case-exclude, -s
-      Match exclude patterns case-sensitively. Default is false.
+Miscellaneous:
+  -W, --no-tree
+      Do not include a directory tree representation in the output.
 
-  --case-all, -a
-      Enables case-sensitive matching for both extensions and exclude patterns,
-      overriding the two options above. Default is false.
+  -P, --no-purge-pycache
+      Do not delete \`__pycache__\` directories and \`.pyc\` files.
 
-  --show-tree, -w
-      Include a tree representation of directories in the output. Default is true.
+  -v, --verbose
+      Show detailed output, including matched files.
 
-  --no-tree, -W
-      Disable the tree representation in the output (overrides --show-tree).
+  -d, --debug
+      Enable debug mode with execution tracing.
 
-  --include-hidden, -H
-      Include hidden files/directories in the search. Default is false.
-
-  --no-hidden, -N
-      Exclude hidden files/directories.
-
-  --purge-pycache, -p
-      Automatically delete '__pycache__' folders and '.pyc' files. Default is true.
-
-  --no-purge-pycache, -P
-      Disable automatic deletion of '__pycache__' and '.pyc' files.
-
-  --ignore-binary, -b
-      Automatically ignore unreadable or binary files from concatenation. Default is true.
-
-  --include-binary, -B
-      Include all files (overrides --ignore-binary).
-
-  --debug, -x
-      Enable debug mode with verbose execution tracing.
-
-  --xml, -m
-      Output the concatenation result in XML format instead of plain text.
-
-  --help, -h
+  -h, --help
       Show this help message and exit.
-
-Examples:
-  concat .py --out-file allPython.txt --exclude __init__.py
-  concat py,js -r -v
-  concat --no-title --in-dir ~/project --out-dir ~/Desktop
-
 EOF
             return 0
         fi
@@ -134,15 +103,13 @@ EOF
     recursive=true
     addTitle=true
     verbose=false
-    caseSensitiveExtensions=false
-    caseSensitiveExcludes=false
-    caseSensitiveAll=false
+    caseSensitive=false
     tree=true
     extensions=""
-    includeHidden=false
+    includeHidden=true
     delPyCache=true
     debug=false
-    excludeBinary=true
+    excludeBinary=false
     xmlOutput=false
 
     # -------------------------------------------------------------------------
@@ -151,42 +118,38 @@ EOF
     while (( $# )); do
         case "$1" in
 
-            --debug|-x)
-                debug=true
-                set -x  # Enable shell debug mode.
-                shift
-            ;;
-
-            --out-file|-o)
-                if [[ -n "$2" && "$2" != --* ]]; then
-                    outputFile="$2"
-                    shift 2
-                else
-                    echo "Error: --out-file requires a filename argument."
-                    return 1
-                fi
-            ;;
-
-            --out-dir|-d)
-                if [[ -n "$2" && "$2" != --* ]]; then
-                    outputDir="$2"
-                    shift 2
-                else
-                    echo "Error: --out-dir requires a directory argument."
-                    return 1
-                fi
-            ;;
-
-            --in-dir|-i)
+            # Input/Output:
+            --input|-i)
                 if [[ -n "$2" && "$2" != --* ]]; then
                     inputDir="$2"
                     shift 2
                 else
-                    echo "Error: --in-dir requires a directory argument."
+                    echo "Error: --input requires a directory argument."
                     return 1
                 fi
             ;;
 
+            --output|-o)
+                if [[ -n "$2" && "$2" != --* ]]; then
+                    outputFile="$2"
+                    shift 2
+                else
+                    echo "Error: --output requires a filename argument."
+                    return 1
+                fi
+            ;;
+
+            --output-dir|-D)
+                if [[ -n "$2" && "$2" != --* ]]; then
+                    outputDir="$2"
+                    shift 2
+                else
+                    echo "Error: --output-dir requires a directory argument."
+                    return 1
+                fi
+            ;;
+
+            # Filtering:
             --exclude|-e)
                 if [[ -n "$2" && "$2" != --* ]]; then
                     IFS=',' read -A tempExcludes <<< "$2"
@@ -221,7 +184,6 @@ EOF
                     IFS=',' read -A rawExcludeExtensions <<< "$2"
                     for ext in "${rawExcludeExtensions[@]}"; do
                         ext=$(echo "$ext" | sed 's/^[[:space:]]*//;s/[[:space:]]*$//')
-                        # Ensure extension begins with a dot.
                         [[ "$ext" != .* ]] && ext=".$ext"
                         excludeExtensionsArray+=("$ext")
                     done
@@ -232,68 +194,41 @@ EOF
                 fi
             ;;
 
-            --recursive|-r)
-                recursive=true
+            --no-hidden|-H)
+                includeHidden=false
                 shift
             ;;
 
+            --no-binary|-B)
+                excludeBinary=true
+                shift
+            ;;
+
+            # Behavior Control:
             --no-recursive|-R)
                 recursive=false
                 shift
             ;;
 
-            --title|-t)
-                addTitle=true
+            --case-sensitive|-C)
+                caseSensitive=true
                 shift
             ;;
 
+            # Formatting:
             --no-title|-T)
                 addTitle=false
                 shift
             ;;
 
-            --verbose|-v)
-                verbose=true
+            --xml|-x)
+                xmlOutput=true
                 shift
             ;;
 
-            --case-ext|-c)
-                caseSensitiveExtensions=true
-                shift
-            ;;
-
-            --case-exclude|-s)
-                caseSensitiveExcludes=true
-                shift
-            ;;
-
-            --case-all|-a)
-                caseSensitiveAll=true
-                shift
-            ;;
-
-            --show-tree|-w)
-                tree=true
-                shift
-            ;;
-
+            # Miscellaneous:
             --no-tree|-W)
                 tree=false
-                shift
-            ;;
-
-            --include-hidden|-H)
-                includeHidden=true
-                shift
-            ;;
-
-            --no-hidden|-N)
-                includeHidden=false
-                shift
-            ;;
-
-            --purge-pycache|-p)
-                delPyCache=true
                 shift
             ;;
 
@@ -302,18 +237,14 @@ EOF
                 shift
             ;;
 
-            --ignore-binary|-b)
-                excludeBinary=true
+            --verbose|-v)
+                verbose=true
                 shift
             ;;
 
-            --include-binary|-B)
-                excludeBinary=false
-                shift
-            ;;
-
-            --xml|-m)
-                xmlOutput=true
+            --debug|-d)
+                debug=true
+                set -x  # Enable shell debug mode.
                 shift
             ;;
 
@@ -356,14 +287,6 @@ EOF
     fi
 
     # -------------------------------------------------------------------------
-    # Adjust Case Sensitivity Settings
-    # -------------------------------------------------------------------------
-    if [[ "$caseSensitiveAll" == true ]]; then
-        caseSensitiveExtensions=true
-        caseSensitiveExcludes=true
-    fi
-
-    # -------------------------------------------------------------------------
     # Verbose: Output Configuration Summary
     # -------------------------------------------------------------------------
     if [[ "$verbose" == true ]]; then
@@ -379,16 +302,14 @@ EOF
         fi
         echo "Exclude Patterns: ${excludePatterns[@]}"
         echo "Include Patterns: ${includePatterns[@]}"
-        echo "Exclude Extensions: ${excludeExtensionsArray[@]}"
+        echo "Ignore Extensions: ${excludeExtensionsArray[@]}"
         echo "Recursive: $recursive"
         echo "Add Title: $addTitle"
-        echo "Case Sensitive Extensions: $caseSensitiveExtensions"
-        echo "Case Sensitive Excludes: $caseSensitiveExcludes"
-        echo "Case Sensitive All: $caseSensitiveAll"
+        echo "Case Sensitive: $caseSensitive"
         echo "Tree Output: $tree"
         echo "Include Hidden: $includeHidden"
-        echo "Delete Pycache: $delPyCache"
-        echo "Exclude Binary: $excludeBinary"
+        echo "Purge Pycache: $delPyCache"
+        echo "Ignore Binary: $excludeBinary"
         echo "Debug Mode: $debug"
         echo "----------------------------------------"
     fi
@@ -420,12 +341,8 @@ EOF
         findCommand+=("-maxdepth" "1")
     fi
     for pattern in "${excludePatterns[@]}"; do
-        if [[ "$caseSensitiveExcludes" == true ]]; then
-            findCommand+=("!" "-path" "$pattern")
-        else
-            regexPattern=$(echo "$pattern" | sed 's/\./\\./g; s/\*/.*/g; s/\?/.?/g')
-            findCommand+=("!" "-iregex" ".*$regexPattern.*")
-        fi
+        regexPattern=$(echo "$pattern" | sed 's/\./\\./g; s/\*/.*/g; s/\?/.?/g')
+        findCommand+=("!" "-iregex" ".*$regexPattern.*")
     done
     if [[ "$verbose" == true ]]; then
         echo "Executing find command: ${findCommand[@]}"
@@ -475,7 +392,7 @@ EOF
 
         # Exclude files with specific extensions.
         if [[ ${#excludeExtensionsArray[@]} -gt 0 ]]; then
-            if [[ "$caseSensitiveExtensions" == false ]]; then
+            if [[ "$caseSensitive" == false ]]; then
                 fileExtLower="${fileExt:l}"
                 for exExt in "${excludeExtensionsArray[@]}"; do
                     exExtLower="${exExt:l}"
@@ -498,7 +415,7 @@ EOF
         # If extensions are specified, check if the file matches.
         if [[ ${#extensionsArray[@]} -gt 0 ]]; then
             foundMatchingExt=false
-            if [[ "$caseSensitiveExtensions" == false ]]; then
+            if [[ "$caseSensitive" == false ]]; then
                 fileExtLower="${fileExt:l}"
                 for ext in "${extensionsArray[@]}"; do
                     extLower="${ext:l}"
@@ -536,7 +453,7 @@ EOF
         if [[ ${#includePatterns[@]} -gt 0 ]]; then
             includeFile=false
             for pattern in "${includePatterns[@]}"; do
-                if [[ "$caseSensitiveExcludes" == true ]]; then
+                if [[ "$caseSensitive" == true ]]; then
                     if [[ "$fullPath" == *"$pattern"* ]]; then
                         includeFile=true
                         break
@@ -573,7 +490,11 @@ EOF
         # Normalize the input directory path.
         tempInputDir="${tempInputDir/#.\//}"
         tempInputDir="${tempInputDir%/}"
-        fullTree="$(tree "$tempInputDir")"
+        if [[ "$xmlOutput" == true ]]; then
+            fullTree="$(tree -X "$tempInputDir")"
+        else
+            fullTree="$(tree "$tempInputDir")"
+        fi
         # Remove the header line from the tree output.
         fullTree=$(sed '1d' <<< "$fullTree")
     fi
@@ -592,11 +513,7 @@ EOF
         # Title Section
         if [[ "$addTitle" == true ]]; then
             echo "  <Title>"
-            if $recursive; then
-                echo "    <Text>Contents of '$inputDirName' and its subdirectories</Text>"
-            else
-                echo "    <Text>Contents of '$inputDirName' (not including its subdirectories)</Text>"
-            fi
+            echo "    <Text>Contents of '$inputDirName'</Text>"
             echo "  </Title>"
         fi
 
@@ -630,15 +547,7 @@ EOF
             done
         fi
         echo "    </IncludePatterns>"
-        echo "    <CaseSensitivityOptions>"
-        echo "      <Extensions>$caseSensitiveExtensions</Extensions>"
-        echo "      <Excludes>$caseSensitiveExcludes</Excludes>"
-        echo "      <All>$caseSensitiveAll</All>"
-        echo "    </CaseSensitivityOptions>"
-        echo "    <OtherOptions>"
-        echo "      <IncludeHidden>$includeHidden</IncludeHidden>"
-        echo "      <ExcludeBinary>$excludeBinary</ExcludeBinary>"
-        echo "    </OtherOptions>"
+        echo "    <CaseSensitive>$caseSensitive</CaseSensitive>"
         echo "    <TotalMatchedFiles>${#matchedFiles[@]}</TotalMatchedFiles>"
         echo "  </Parameters>"
 
@@ -768,11 +677,7 @@ EOF
 
         # Title Section
         if [[ "$addTitle" == true ]]; then
-            if $recursive; then
-                echo "Contents of '$inputDirName' and its subdirectories"
-            else
-                echo "Contents of '$inputDirName' (not including its subdirectories)"
-            fi
+            echo "Contents of '$inputDirName'"
             echo '$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$'
             echo ""
         fi
@@ -800,13 +705,18 @@ EOF
         else
             printf '  - %s\n' "${includePatterns[@]}"
         fi
-        echo "Case Sensitivity Options:"
-        echo "  - Extensions: $caseSensitiveExtensions"
-        echo "  - Excludes: $caseSensitiveExcludes"
-        echo "  - All: $caseSensitiveAll"
+        echo "Ignore Extensions:"
+        if [[ ${#excludeExtensionsArray[@]} -eq 0 ]]; then
+            echo "  - N/A"
+        else
+            printf '  - %s\n' "${excludeExtensionsArray[@]}"
+        fi
+        echo "Case Sensitive: $caseSensitive"
         echo "Other Options:"
+        echo "  - Recursive Search: $recursive"
         echo "  - Include Hidden: $includeHidden"
-        echo "  - Exclude Binaries: $excludeBinary"
+        echo "  - Purge Pycache: $delPyCache"
+        echo "  - Ignore Binary: $excludeBinary"
         echo "- - - - - - - - - - - - - - - - - - - -"
         echo "Total matched files: ${#matchedFiles[@]}"
         echo "================================================================================"
@@ -889,7 +799,7 @@ EOF
             done < <(find "$inputDir" -type d | sort)
             for dir in ${(k)dirMap}; do
                 if [[ "$dir" == "$inputDir" ]]; then
-                    relativeDir="$inputDir"
+                    relativeDir="$inputDirName"
                 else
                     relativeDir="$inputDirName/${dir#$fullInputDir/}"
                 fi
