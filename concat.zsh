@@ -70,7 +70,7 @@ Miscellaneous:
       Do not include a directory tree representation in the output.
 
   -P, --no-purge-pycache
-      Do not delete \`__pycache__\` directories and \`.pyc\` files.
+      Do not delete `__pycache__` directories and `.pyc` files.
 
   -v, --verbose
       Show detailed output, including matched and skipped files.
@@ -95,6 +95,7 @@ EOF
     # Set Default Configuration Values
     # -------------------------------------------------------------------------
     outputFile="concatOutput.txt"
+    userOutputProvided=false
     outputDir="."
     inputDir="."
     excludePatterns=()
@@ -132,6 +133,7 @@ EOF
             --output|-o)
                 if [[ -n "$2" && "$2" != --* ]]; then
                     outputFile="$2"
+                    userOutputProvided=true
                     shift 2
                 else
                     echo "Error: --output requires a filename argument."
@@ -264,6 +266,13 @@ EOF
             ;;
         esac
     done
+
+    # -------------------------------------------------------------------------
+    # Update default output file extension for XML output if not user-provided
+    # -------------------------------------------------------------------------
+    if [[ "$xmlOutput" == true && "$userOutputProvided" == false ]]; then
+        outputFile="concatOutput.xml"
+    fi
 
     # -------------------------------------------------------------------------
     # Determine Input Directory Base Name
