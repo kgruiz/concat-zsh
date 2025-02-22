@@ -547,7 +547,7 @@ EOF
         {
             echo '<?xml version="1.0" encoding="UTF-8"?>'
             if [[ "$showDirList" == true ]]; then
-                echo '<ConcatOutputMinimal>'
+                echo '<ConcatOutput>'
                 # Output directory list
                 echo "  <MatchedFilesDirectoryStructureList>"
                 typeset -A matchedDirMap
@@ -603,7 +603,7 @@ EOF
             fi
             echo "  </FileContents>"
             if [[ "$showDirList" == true ]]; then
-                echo "</ConcatOutputMinimal>"
+                echo "</ConcatOutput>"
             else
                 echo "</FileContentsOnly>"
             fi
