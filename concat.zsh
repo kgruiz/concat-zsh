@@ -45,10 +45,10 @@ Filtering:
       Extensions can be prefixed with '.' or written as plain text.
 
   -H, --hidden
-      Include hidden files and directories (default: ignore hidden files and directories).
+      Include hidden files and directories.
 
   -n, --non-text
-      Include non-text files (default: ignore non-text files).
+      Include non-text files.
 
 Behavior Control:
   -R, --no-recursive
@@ -65,13 +65,19 @@ Formatting:
       Format the output as XML instead of plain text.
 
   -m, --minimal
-      Minimal mode. By default outputs directory structure list and file contents.
+      Minimal mode. By default outputs matched directory list and file contents,
+      but omits file paths. See --paths.
+
+  -p, --paths <TRUE|FALSE>
+      Explicitly set whether to output the relative and absolute paths for each file.
+      Accepts TRUE, FALSE, 1, or 0 (not case sensitive). In minimal mode the default is FALSE,
+      in non-minimal mode the default is TRUE.
 
   -N, --no-params
       Do not output the parameters block.
 
   -L, --no-dir-list
-      Do not output the matched directory list. Overrides other modes, like minimal.
+      Do not output the matched directory list.
 
   -W, --no-tree
       Do not include a directory tree representation in the output.
@@ -121,9 +127,11 @@ EOF
     xmlOutput=false
     minimalMode=false
 
-    # New booleans for optional output sections:
     showParams=true
     showDirList=true
+
+    # In non‑minimal mode default is TRUE.
+    showPaths=true
 
     # -------------------------------------------------------------------------
     # Parse Command-Line Options
@@ -237,7 +245,27 @@ EOF
 
             --minimal|-m)
                 minimalMode=true
+                # In minimal mode, default showPaths to FALSE unless overridden later.
+                showPaths=false
                 shift
+            ;;
+
+            --paths|-p)
+                if [[ -n "$2" && "$2" != --* ]]; then
+                    lowerVal=$(echo "$2" | tr '[:upper:]' '[:lower:]')
+                    if [[ "$lowerVal" == "true" || "$lowerVal" == "1" ]]; then
+                        showPaths=true
+                    elif [[ "$lowerVal" == "false" || "$lowerVal" == "0" ]]; then
+                        showPaths=false
+                    else
+                        echo "Error: --paths requires either TRUE or FALSE (or 1 or 0)."
+                        return 1
+                    fi
+                    shift 2
+                else
+                    echo "Error: --paths requires an argument (TRUE or FALSE, or 1 or 0)."
+                    return 1
+                fi
             ;;
 
             --no-params|-N)
@@ -343,6 +371,7 @@ EOF
         echo "Minimal Mode: $minimalMode"
         echo "Show Params: $showParams"
         echo "Show Directory List: $showDirList"
+        echo "Show Paths: $showPaths"
         echo "Debug Mode: $debug"
         echo "----------------------------------------"
     fi
@@ -541,14 +570,14 @@ EOF
     # Final Output Block(s)
     # -------------------------------------------------------------------------
     if [[ "$minimalMode" == true ]]; then
-        # In minimal mode, normally both the directory structure list and file contents are output.
-        # However, if showDirList is false (i.e. --no-dir-list/-L given), only file contents are output.
+        # In minimal mode, normally both the matched directory list and file contents are output.
+        # However, if showDirList is false (i.e. -L/--no-dir-list given), only file contents are output.
         if [[ "$xmlOutput" == true ]]; then
         {
             echo '<?xml version="1.0" encoding="UTF-8"?>'
             if [[ "$showDirList" == true ]]; then
                 echo '<ConcatOutput>'
-                # Output directory list
+                # Output matched directory list
                 echo "  <MatchedFilesDirectoryStructureList>"
                 typeset -A matchedDirMap
                 fullInputDir="$(realpath "$inputDir")"
@@ -587,8 +616,10 @@ EOF
                     filename="$(basename "$file")"
                     echo "    <File>"
                     echo "      <Filename>$filename</Filename>"
-                    echo "      <RelativePath>$relativePath</RelativePath>"
-                    echo "      <AbsolutePath>$absolutePath</AbsolutePath>"
+                    if [[ "$showPaths" == true ]]; then
+                        echo "      <RelativePath>$relativePath</RelativePath>"
+                        echo "      <AbsolutePath>$absolutePath</AbsolutePath>"
+                    fi
                     echo "      <Content><![CDATA["
                     if [[ -r "$file" ]]; then
                         cat "$file"
@@ -656,8 +687,10 @@ EOF
                     echo ""
                     echo "--------------------------------------------------------------------------------"
                     echo "# Filename: \"$filename\""
-                    echo "# Relative to Input Dir: \"$relativePath\""
-                    echo "# Absolute Path: \"$absolutePath\""
+                    if [[ "$showPaths" == true ]]; then
+                        echo "# Relative to Input Dir: \"$relativePath\""
+                        echo "# Absolute Path: \"$absolutePath\""
+                    fi
                     echo "********************************************************************************"
                     if [[ -r "$file" ]]; then
                         cat "$file"
@@ -678,7 +711,7 @@ EOF
         fi
     else
         # -------------------------------------------------------------------------
-        # Standard Output (Non-Minimal Mode)
+        # Standard Output (Non‑Minimal Mode)
         # -------------------------------------------------------------------------
         if [[ "$xmlOutput" == true ]]; then
         {
@@ -822,8 +855,10 @@ EOF
                     filename="$(basename "$file")"
                     echo "    <File>"
                     echo "      <Filename>$filename</Filename>"
-                    echo "      <RelativePath>$relativePath</RelativePath>"
-                    echo "      <AbsolutePath>$absolutePath</AbsolutePath>"
+                    if [[ "$showPaths" == true ]]; then
+                        echo "      <RelativePath>$relativePath</RelativePath>"
+                        echo "      <AbsolutePath>$absolutePath</AbsolutePath>"
+                    fi
                     echo "      <Content><![CDATA["
                     if [[ -r "$file" ]]; then
                         cat "$file"
@@ -881,14 +916,16 @@ EOF
                 for file in "${matchedFiles[@]}"; do
                     ((currentFile++))
                     relativePath="${file#$inputDir/}"
-                    relativePath="${inputDirName}/${relativePath}"
+                    relativePath="$(basename "$fullInputDir")/${relativePath}"
                     absolutePath=$(realpath "$file")
                     filename="$(basename "$file")"
                     echo ""
                     echo "--------------------------------------------------------------------------------"
                     echo "# Filename: \"$filename\""
-                    echo "# Relative to Input Dir: \"$relativeDir\""
-                    echo "# Absolute Path: \"$absolutePath\""
+                    if [[ "$showPaths" == true ]]; then
+                        echo "# Relative to Input Dir: \"$relativePath\""
+                        echo "# Absolute Path: \"$absolutePath\""
+                    fi
                     echo "********************************************************************************"
                     if [[ -r "$file" ]]; then
                         cat "$file"
