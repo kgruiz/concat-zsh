@@ -1,4 +1,3 @@
-#!/bin/zsh
 # concat.zsh
 
 # Function: concat
@@ -7,10 +6,6 @@
 # Combines the contents of files matching optional file extensions into a single output file.
 # Supports excluding/including specific paths, deleting Python cache files, generating a tree view,
 # and excluding non-text/unreadable files. Both XML and plain-text outputs are supported.
-#
-# Minimal Mode:
-#   When activated with --minimal or -M, the output will only include the MatchedFilesDirectoryStructureList
-#   and the file contents.
 
 concat() {
 
@@ -70,7 +65,13 @@ Formatting:
       Format the output as XML instead of plain text.
 
   -m, --minimal
-      Minimal mode. Only output the MatchedFilesDirectoryStructureList and the file contents.
+      Minimal mode. By default outputs directory structure list and file contents.
+
+  -N, --no-params
+      Do not output the parameters block.
+
+  -L, --no-dir-list
+      Do not output the matched directory list. Overrides other modes, like minimal.
 
   -W, --no-tree
       Do not include a directory tree representation in the output.
@@ -119,6 +120,10 @@ EOF
     excludeNonText=true
     xmlOutput=false
     minimalMode=false
+
+    # New booleans for optional output sections:
+    showParams=true
+    showDirList=true
 
     # -------------------------------------------------------------------------
     # Parse Command-Line Options
@@ -230,8 +235,18 @@ EOF
                 shift
             ;;
 
-            --minimal|-M)
+            --minimal|-m)
                 minimalMode=true
+                shift
+            ;;
+
+            --no-params|-N)
+                showParams=false
+                shift
+            ;;
+
+            --no-dir-list|-L)
+                showDirList=false
                 shift
             ;;
 
@@ -326,6 +341,8 @@ EOF
         echo "Ignore Non-Text: $excludeNonText"
         echo "XML Output: $xmlOutput"
         echo "Minimal Mode: $minimalMode"
+        echo "Show Params: $showParams"
+        echo "Show Directory List: $showDirList"
         echo "Debug Mode: $debug"
         echo "----------------------------------------"
     fi
@@ -524,38 +541,40 @@ EOF
     # Final Output Block(s)
     # -------------------------------------------------------------------------
     if [[ "$minimalMode" == true ]]; then
+        # In minimal mode, normally both the directory structure list and file contents are output.
+        # However, if showDirList is false (i.e. --no-dir-list/-L given), only file contents are output.
         if [[ "$xmlOutput" == true ]]; then
         {
             echo '<?xml version="1.0" encoding="UTF-8"?>'
-            echo '<ConcatOutputMinimal>'
-
-            # Matched Files Directory Structure List
-            echo "  <MatchedFilesDirectoryStructureList>"
-            typeset -A matchedDirMap
-            fullInputDir="$(realpath "$inputDir")"
-            for file in "${matchedFiles[@]}"; do
-                fileFullPath="$(realpath "$file")"
-                dir=$(dirname "$fileFullPath")
-                base=$(basename "$fileFullPath")
-                if [[ -n "$base" ]]; then
-                    if [[ -n "${matchedDirMap[$dir]}" ]]; then
-                        matchedDirMap[$dir]="${matchedDirMap[$dir]}, $base"
-                    else
-                        matchedDirMap[$dir]="$base"
+            if [[ "$showDirList" == true ]]; then
+                echo '<ConcatOutputMinimal>'
+                # Output directory list
+                echo "  <MatchedFilesDirectoryStructureList>"
+                typeset -A matchedDirMap
+                fullInputDir="$(realpath "$inputDir")"
+                for file in "${matchedFiles[@]}"; do
+                    fileFullPath="$(realpath "$file")"
+                    dir=$(dirname "$fileFullPath")
+                    base=$(basename "$fileFullPath")
+                    if [[ -n "$base" ]]; then
+                        if [[ -n "${matchedDirMap[$dir]}" ]]; then
+                            matchedDirMap[$dir]="${matchedDirMap[$dir]}, $base"
+                        else
+                            matchedDirMap[$dir]="$base"
+                        fi
                     fi
-                fi
-            done
-            for dir in ${(k)matchedDirMap}; do
-                if [[ "$dir" == "$fullInputDir" ]]; then
-                    relativeDir="$(basename "$fullInputDir")"
-                else
-                    relativeDir="$(basename "$fullInputDir")/${dir#$fullInputDir/}"
-                fi
-                echo "    <DirectoryEntry>\"$relativeDir\": [${matchedDirMap[$dir]}]</DirectoryEntry>"
-            done | sort
-            echo "  </MatchedFilesDirectoryStructureList>"
-
-            # File Contents Section
+                done
+                for dir in ${(k)matchedDirMap}; do
+                    if [[ "$dir" == "$fullInputDir" ]]; then
+                        relativeDir="$(basename "$fullInputDir")"
+                    else
+                        relativeDir="$(basename "$fullInputDir")/${dir#$fullInputDir/}"
+                    fi
+                    echo "    <DirectoryEntry>\"$relativeDir\": [${matchedDirMap[$dir]}]</DirectoryEntry>"
+                done | sort
+                echo "  </MatchedFilesDirectoryStructureList>"
+            fi
+            # Always output file contents.
             echo "  <FileContents>"
             totalFiles=${#matchedFiles[@]}
             if [[ $totalFiles -gt 0 ]]; then
@@ -583,38 +602,45 @@ EOF
                 echo "    <Message>No files to concatenate.</Message>"
             fi
             echo "  </FileContents>"
-
-            echo "</ConcatOutputMinimal>"
+            if [[ "$showDirList" == true ]]; then
+                echo "</ConcatOutputMinimal>"
+            else
+                echo "</FileContentsOnly>"
+            fi
         } > "$outputFilePath"
         else
         {
-            echo "--------------------------------------------------------------------------------"
-            echo "# Directory Structure List (Matched Files Only)"
-            echo "********************************************************************************"
-            typeset -A matchedDirMap
-            fullInputDir="$(realpath "$inputDir")"
-            for file in "${matchedFiles[@]}"; do
-                fileFullPath="$(realpath "$file")"
-                dir=$(dirname "$fileFullPath")
-                base=$(basename "$fileFullPath")
-                if [[ -n "$base" ]]; then
-                    if [[ -n "${matchedDirMap[$dir]}" ]]; then
-                        matchedDirMap[$dir]="${matchedDirMap[$dir]}, $base"
-                    else
-                        matchedDirMap[$dir]="$base"
+            # Non-XML Minimal Mode
+            if [[ "$showDirList" == true ]]; then
+                echo "--------------------------------------------------------------------------------"
+                echo "# Directory Structure List (Matched Files Only)"
+                echo "********************************************************************************"
+                typeset -A matchedDirMap
+                fullInputDir="$(realpath "$inputDir")"
+                for file in "${matchedFiles[@]}"; do
+                    fileFullPath="$(realpath "$file")"
+                    dir=$(dirname "$fileFullPath")
+                    base=$(basename "$fileFullPath")
+                    if [[ -n "$base" ]]; then
+                        if [[ -n "${matchedDirMap[$dir]}" ]]; then
+                            matchedDirMap[$dir]="${matchedDirMap[$dir]}, $base"
+                        else
+                            matchedDirMap[$dir]="$base"
+                        fi
                     fi
-                fi
-            done
-            for dir in ${(k)matchedDirMap}; do
-                if [[ "$dir" == "$fullInputDir" ]]; then
-                    relativeDir="$(basename "$fullInputDir")"
-                else
-                    relativeDir="$(basename "$fullInputDir")/${dir#$fullInputDir/}"
-                fi
-                echo "\"$relativeDir\": [${matchedDirMap[$dir]}]"
-            done | sort
-            echo "================================================================================"
-            echo ""
+                done
+                for dir in ${(k)matchedDirMap}; do
+                    if [[ "$dir" == "$fullInputDir" ]]; then
+                        relativeDir="$(basename "$fullInputDir")"
+                    else
+                        relativeDir="$(basename "$fullInputDir")/${dir#$fullInputDir/}"
+                    fi
+                    echo "\"$relativeDir\": [${matchedDirMap[$dir]}]"
+                done | sort
+                echo "================================================================================"
+                echo ""
+            fi
+
             echo "--------------------------------------------------------------------------------"
             echo "# File Contents"
             echo "********************************************************************************"
@@ -630,7 +656,7 @@ EOF
                     echo ""
                     echo "--------------------------------------------------------------------------------"
                     echo "# Filename: \"$filename\""
-                    echo "# Relative to Input Dir: \"$relativeDir\""
+                    echo "# Relative to Input Dir: \"$relativePath\""
                     echo "# Absolute Path: \"$absolutePath\""
                     echo "********************************************************************************"
                     if [[ -r "$file" ]]; then
@@ -669,62 +695,66 @@ EOF
             fi
 
             echo "  <Command>concat ${fullCommand}</Command>"
-            echo "  <Parameters>"
-            echo "    <Extensions>"
-            if [[ ${#extensionsArray[@]} -eq 0 ]]; then
-                echo "      <Value>All</Value>"
-            else
-                for ext in "${extensionsArray[@]}"; do
-                    echo "      <Value>$ext</Value>"
-                done
-            fi
-            echo "    </Extensions>"
-            echo "    <ExcludePatterns>"
-            if [[ ${#excludePatterns[@]} -eq 0 ]]; then
-                echo "      <Value>N/A</Value>"
-            else
-                for pat in "${excludePatterns[@]}"; do
-                    echo "      <Value>$pat</Value>"
-                done
-            fi
-            echo "    </ExcludePatterns>"
-            echo "    <IncludePatterns>"
-            if [[ ${#includePatterns[@]} -eq 0 ]]; then
-                echo "      <Value>All</Value>"
-            else
-                for pat in "${includePatterns[@]}"; do
-                    echo "      <Value>$pat</Value>"
-                done
-            fi
-            echo "    </IncludePatterns>"
-            echo "    <CaseSensitive>$caseSensitive</CaseSensitive>"
-            echo "    <TotalMatchedFiles>${#matchedFiles[@]}</TotalMatchedFiles>"
-            echo "  </Parameters>"
-
-            echo "  <MatchedFilesDirectoryStructureList>"
-            typeset -A matchedDirMap
-            fullInputDir="$(realpath "$inputDir")"
-            for file in "${matchedFiles[@]}"; do
-                fileFullPath="$(realpath "$file")"
-                dir=$(dirname "$fileFullPath")
-                base=$(basename "$fileFullPath")
-                if [[ -n "$base" ]]; then
-                    if [[ -n "${matchedDirMap[$dir]}" ]]; then
-                        matchedDirMap[$dir]="${matchedDirMap[$dir]}, $base"
-                    else
-                        matchedDirMap[$dir]="$base"
-                    fi
-                fi
-            done
-            for dir in ${(k)matchedDirMap}; do
-                if [[ "$dir" == "$fullInputDir" ]]; then
-                    relativeDir="$inputDirName"
+            if [[ "$showParams" == true ]]; then
+                echo "  <Parameters>"
+                echo "    <Extensions>"
+                if [[ ${#extensionsArray[@]} -eq 0 ]]; then
+                    echo "      <Value>All</Value>"
                 else
-                    relativeDir="$inputDirName/${dir#$fullInputDir/}"
+                    for ext in "${extensionsArray[@]}"; do
+                        echo "      <Value>$ext</Value>"
+                    done
                 fi
-                echo "      <DirectoryEntry>\"$relativeDir\": [${matchedDirMap[$dir]}]</DirectoryEntry>"
-            done | sort
-            echo "  </MatchedFilesDirectoryStructureList>"
+                echo "    </Extensions>"
+                echo "    <ExcludePatterns>"
+                if [[ ${#excludePatterns[@]} -eq 0 ]]; then
+                    echo "      <Value>N/A</Value>"
+                else
+                    for pat in "${excludePatterns[@]}"; do
+                        echo "      <Value>$pat</Value>"
+                    done
+                fi
+                echo "    </ExcludePatterns>"
+                echo "    <IncludePatterns>"
+                if [[ ${#includePatterns[@]} -eq 0 ]]; then
+                    echo "      <Value>All</Value>"
+                else
+                    for pat in "${includePatterns[@]}"; do
+                        echo "      <Value>$pat</Value>"
+                    done
+                fi
+                echo "    </IncludePatterns>"
+                echo "    <CaseSensitive>$caseSensitive</CaseSensitive>"
+                echo "    <TotalMatchedFiles>${#matchedFiles[@]}</TotalMatchedFiles>"
+                echo "  </Parameters>"
+            fi
+
+            if [[ "$showDirList" == true ]]; then
+                echo "  <MatchedFilesDirectoryStructureList>"
+                typeset -A matchedDirMap
+                fullInputDir="$(realpath "$inputDir")"
+                for file in "${matchedFiles[@]}"; do
+                    fileFullPath="$(realpath "$file")"
+                    dir=$(dirname "$fileFullPath")
+                    base=$(basename "$fileFullPath")
+                    if [[ -n "$base" ]]; then
+                        if [[ -n "${matchedDirMap[$dir]}" ]]; then
+                            matchedDirMap[$dir]="${matchedDirMap[$dir]}, $base"
+                        else
+                            matchedDirMap[$dir]="$base"
+                        fi
+                    fi
+                done
+                for dir in ${(k)matchedDirMap}; do
+                    if [[ "$dir" == "$fullInputDir" ]]; then
+                        relativeDir="$inputDirName"
+                    else
+                        relativeDir="$inputDirName/${dir#$fullInputDir/}"
+                    fi
+                    echo "      <DirectoryEntry>\"$relativeDir\": [${matchedDirMap[$dir]}]</DirectoryEntry>"
+                done | sort
+                echo "  </MatchedFilesDirectoryStructureList>"
+            fi
 
             echo "  <TreeOutput>"
             echo "    <TreeRepresentation>"
@@ -810,33 +840,36 @@ EOF
         } > "$outputFilePath"
         else
         {
-            echo "--------------------------------------------------------------------------------"
-            echo "# Directory Structure List (Matched Files Only)"
-            echo "********************************************************************************"
-            typeset -A matchedDirMap
-            fullInputDir="$(realpath "$inputDir")"
-            for file in "${matchedFiles[@]}"; do
-                fileFullPath="$(realpath "$file")"
-                dir=$(dirname "$fileFullPath")
-                base=$(basename "$fileFullPath")
-                if [[ -n "$base" ]]; then
-                    if [[ -n "${matchedDirMap[$dir]}" ]]; then
-                        matchedDirMap[$dir]="${matchedDirMap[$dir]}, $base"
-                    else
-                        matchedDirMap[$dir]="$base"
+            if [[ "$showDirList" == true ]]; then
+                echo "--------------------------------------------------------------------------------"
+                echo "# Directory Structure List (Matched Files Only)"
+                echo "********************************************************************************"
+                typeset -A matchedDirMap
+                fullInputDir="$(realpath "$inputDir")"
+                for file in "${matchedFiles[@]}"; do
+                    fileFullPath="$(realpath "$file")"
+                    dir=$(dirname "$fileFullPath")
+                    base=$(basename "$fileFullPath")
+                    if [[ -n "$base" ]]; then
+                        if [[ -n "${matchedDirMap[$dir]}" ]]; then
+                            matchedDirMap[$dir]="${matchedDirMap[$dir]}, $base"
+                        else
+                            matchedDirMap[$dir]="$base"
+                        fi
                     fi
-                fi
-            done
-            for dir in ${(k)matchedDirMap}; do
-                if [[ "$dir" == "$fullInputDir" ]]; then
-                    relativeDir="$inputDirName"
-                else
-                    relativeDir="$inputDirName/${dir#$fullInputDir/}"
-                fi
-                echo "\"$relativeDir\": [${matchedDirMap[$dir]}]"
-            done | sort
-            echo "================================================================================"
-            echo ""
+                done
+                for dir in ${(k)matchedDirMap}; do
+                    if [[ "$dir" == "$fullInputDir" ]]; then
+                        relativeDir="$inputDirName"
+                    else
+                        relativeDir="$inputDirName/${dir#$fullInputDir/}"
+                    fi
+                    echo "\"$relativeDir\": [${matchedDirMap[$dir]}]"
+                done | sort
+                echo "================================================================================"
+                echo ""
+            fi
+
             echo "--------------------------------------------------------------------------------"
             echo "# File Contents"
             echo "********************************************************************************"
