@@ -694,9 +694,9 @@ EOF
                 echo "  </Title>"
             fi
 
-            echo "  <Command>concat ${fullCommand}</Command>"
             if [[ "$showParams" == true ]]; then
                 echo "  <Parameters>"
+                echo "  <Command>concat ${fullCommand}</Command>"
                 echo "    <Extensions>"
                 if [[ ${#extensionsArray[@]} -eq 0 ]]; then
                     echo "      <Value>All</Value>"
