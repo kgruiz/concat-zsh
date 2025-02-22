@@ -767,45 +767,47 @@ EOF
             echo "]]></Tree>"
             echo "    </TreeRepresentation>"
 
-            echo "    <DirectoryStructureList>"
-            typeset -A dirMap
-            fullOutputPath="$(realpath "$outputFilePath")"
-            while IFS= read -r dir; do
-                fullPath="$(realpath "$dir")"
-                if IsPathHidden "$fullPath" && [[ "$includeHidden" == false ]]; then
-                    continue
-                fi
-                children=("${(@f)$(find "$dir" -mindepth 1 -maxdepth 1 | sort)}")
-                childrenBase=()
-                for child in "${children[@]}"; do
-                    if [[ -z "$child" ]]; then
+            if [[ "$showDirList" == true ]]; then
+                echo "    <DirectoryStructureList>"
+                typeset -A dirMap
+                fullOutputPath="$(realpath "$outputFilePath")"
+                while IFS= read -r dir; do
+                    fullPath="$(realpath "$dir")"
+                    if IsPathHidden "$fullPath" && [[ "$includeHidden" == false ]]; then
                         continue
                     fi
-                    fullChildPath="$(realpath "$child")"
-                    if IsPathHidden "$fullChildPath" && [[ "$includeHidden" == false ]]; then
-                        continue
-                    elif [[ "$fullChildPath" == "$fullOutputPath" ]]; then
-                        continue
+                    children=("${(@f)$(find "$dir" -mindepth 1 -maxdepth 1 | sort)}")
+                    childrenBase=()
+                    for child in "${children[@]}"; do
+                        if [[ -z "$child" ]]; then
+                            continue
+                        fi
+                        fullChildPath="$(realpath "$child")"
+                        if IsPathHidden "$fullChildPath" && [[ "$includeHidden" == false ]]; then
+                            continue
+                        elif [[ "$fullChildPath" == "$fullOutputPath" ]]; then
+                            continue
+                        fi
+                        childrenBase+=("$(basename "$child")")
+                    done
+                    if [[ ${#childrenBase[@]} -gt 0 ]]; then
+                        childrenStr=$(printf ", %s" "${childrenBase[@]}")
+                        childrenStr="${childrenStr:2}"
+                        dirMap["$dir"]="[\"$childrenStr\"]"
+                    else
+                        dirMap["$dir"]="[]"
                     fi
-                    childrenBase+=("$(basename "$child")")
-                done
-                if [[ ${#childrenBase[@]} -gt 0 ]]; then
-                    childrenStr=$(printf ", %s" "${childrenBase[@]}")
-                    childrenStr="${childrenStr:2}"
-                    dirMap["$dir"]="[\"$childrenStr\"]"
-                else
-                    dirMap["$dir"]="[]"
-                fi
-            done < <(find "$inputDir" -type d | sort)
-            for dir in ${(k)dirMap}; do
-                if [[ "$dir" == "$inputDir" ]]; then
-                    relativeDir="$inputDirName"
-                else
-                    relativeDir="$inputDirName/${dir#$fullInputDir/}"
-                fi
-                echo "      <DirectoryEntry>$relativeDir: ${dirMap[$dir]}</DirectoryEntry>"
-            done | sort
-            echo "    </DirectoryStructureList>"
+                done < <(find "$inputDir" -type d | sort)
+                for dir in ${(k)dirMap}; do
+                    if [[ "$dir" == "$inputDir" ]]; then
+                        relativeDir="$inputDirName"
+                    else
+                        relativeDir="$inputDirName/${dir#$fullInputDir/}"
+                    fi
+                    echo "      <DirectoryEntry>$relativeDir: ${dirMap[$dir]}</DirectoryEntry>"
+                done | sort
+                echo "    </DirectoryStructureList>"
+            fi
             echo "  </TreeOutput>"
 
             echo "  <FileContents>"
