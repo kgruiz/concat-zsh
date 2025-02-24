@@ -428,6 +428,7 @@ EOF
     # -------------------------------------------------------------------------
     matchedFiles=()
     foundFiles=("${(@f)$( "${findCommand[@]}" )}")
+    foundFiles=( $(printf '%s\n' "${foundFiles[@]}" | sort -V) )
     totalFound=${#foundFiles[@]}
     currentScan=0
 
@@ -600,7 +601,7 @@ EOF
                         relativeDir="$(basename "$fullInputDir")/${dir#$fullInputDir/}"
                     fi
                     echo "    <DirectoryEntry>\"$relativeDir\": [${matchedDirMap[$dir]}]</DirectoryEntry>"
-                done | sort
+                done | sort -V
                 echo "  </MatchedFilesDirectoryStructureList>"
             fi
             # Always output file contents.
@@ -667,7 +668,7 @@ EOF
                         relativeDir="$(basename "$fullInputDir")/${dir#$fullInputDir/}"
                     fi
                     echo "\"$relativeDir\": [${matchedDirMap[$dir]}]"
-                done | sort
+                done | sort -V
                 echo "================================================================================"
                 echo ""
             fi
@@ -785,7 +786,7 @@ EOF
                         relativeDir="$inputDirName/${dir#$fullInputDir/}"
                     fi
                     echo "      <DirectoryEntry>\"$relativeDir\": [${matchedDirMap[$dir]}]</DirectoryEntry>"
-                done | sort
+                done | sort -V
                 echo "  </MatchedFilesDirectoryStructureList>"
             fi
 
@@ -809,7 +810,7 @@ EOF
                     if IsPathHidden "$fullPath" && [[ "$includeHidden" == false ]]; then
                         continue
                     fi
-                    children=("${(@f)$(find "$dir" -mindepth 1 -maxdepth 1 | sort)}")
+                    children=("${(@f)$(find "$dir" -mindepth 1 -maxdepth 1 | sort -V)}")
                     childrenBase=()
                     for child in "${children[@]}"; do
                         if [[ -z "$child" ]]; then
@@ -830,7 +831,7 @@ EOF
                     else
                         dirMap["$dir"]="[]"
                     fi
-                done < <(find "$inputDir" -type d | sort)
+                done < <(find "$inputDir" -type d | sort -V)
                 for dir in ${(k)dirMap}; do
                     if [[ "$dir" == "$inputDir" ]]; then
                         relativeDir="$inputDirName"
@@ -838,7 +839,7 @@ EOF
                         relativeDir="$inputDirName/${dir#$fullInputDir/}"
                     fi
                     echo "      <DirectoryEntry>$relativeDir: ${dirMap[$dir]}</DirectoryEntry>"
-                done | sort
+                done | sort -V
                 echo "    </DirectoryStructureList>"
             fi
             echo "  </TreeOutput>"
@@ -902,7 +903,7 @@ EOF
                         relativeDir="$inputDirName/${dir#$fullInputDir/}"
                     fi
                     echo "\"$relativeDir\": [${matchedDirMap[$dir]}]"
-                done | sort
+                done | sort -V
                 echo "================================================================================"
                 echo ""
             fi
