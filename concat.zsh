@@ -349,9 +349,9 @@ EOF
     if [[ "$verbose" == true ]]; then
         echo "----------------------------------------"
         echo "Configuration:"
-        echo "Input Directory: $inputDir"
-        echo "Output Directory: $outputDir"
-        echo "Output File: $outputFile"
+        echo "Input Directory: \"$inputDir\""
+        echo "Output Directory: \"$outputDir\""
+        echo "Output File: \"$outputFile\""
         if [[ ${#extensionsArray[@]} -gt 0 ]]; then
             echo "Extensions: ${extensionsArray[@]}"
         else
@@ -379,7 +379,7 @@ EOF
     # -------------------------------------------------------------------------
     # Prepare Output File and Directory
     # -------------------------------------------------------------------------
-    mkdir -p "$outputDir" || { echo "Error: Cannot create output directory '$outputDir'." >&2; return 1; }
+    mkdir -p "$outputDir" || { echo "Error: Cannot create output directory \"$outputDir\"." >&2; return 1; }
     outputFilePath="$outputDir/$outputFile"
     if [[ -e "$outputFilePath" ]]; then
         fullOutputPath="$(realpath "$outputFilePath")"
@@ -428,7 +428,7 @@ EOF
     # -------------------------------------------------------------------------
     matchedFiles=()
     foundFiles=("${(@f)$( "${findCommand[@]}" )}")
-    foundFiles=( $(printf '%s\n' "${foundFiles[@]}" | sort -V) )
+    foundFiles=("${(@f)$(printf '%s\n' "${foundFiles[@]}" | sort -V)}")
     totalFound=${#foundFiles[@]}
     currentScan=0
 
@@ -444,7 +444,7 @@ EOF
         fullPath="$(realpath "$file")"
 
         if IsPathHidden "$fullPath" && [[ "$includeHidden" == false ]]; then
-            [[ "$verbose" == true ]] && echo "Skipped file: $file (hidden)"
+            [[ "$verbose" == true ]] && echo "Skipped file: \"$file\" (hidden)"
             continue
         fi
 
@@ -470,7 +470,7 @@ EOF
                 done
             fi
             if $skipFile; then
-                [[ "$verbose" == true ]] && echo "Skipped file: $file (ignored extension)"
+                [[ "$verbose" == true ]] && echo "Skipped file: \"$file\" (ignored extension)"
                 continue
             fi
         fi
@@ -495,7 +495,7 @@ EOF
                 done
             fi
             if [[ "$foundMatchingExt" == false ]]; then
-                [[ "$verbose" == true ]] && echo "Skipped file: $file (extension not matched)"
+                [[ "$verbose" == true ]] && echo "Skipped file: \"$file\" (extension not matched)"
                 continue
             fi
         fi
@@ -519,7 +519,7 @@ EOF
                 fi
             fi
             if $skipFile; then
-                [[ "$verbose" == true ]] && echo "Skipped file: $file (non-text or unreadable)"
+                [[ "$verbose" == true ]] && echo "Skipped file: \"$file\" (non-text or unreadable)"
                 continue
             fi
         fi
@@ -541,13 +541,13 @@ EOF
                 fi
             done
             if [[ "$includeFile" == false ]]; then
-                [[ "$verbose" == true ]] && echo "Skipped file: $file (include pattern not matched)"
+                [[ "$verbose" == true ]] && echo "Skipped file: \"$file\" (include pattern not matched)"
                 continue
             fi
         fi
 
         matchedFiles+=("$file")
-        [[ "$verbose" == true ]] && echo "Matched file: $file"
+        [[ "$verbose" == true ]] && echo "Matched file: \"$file\""
     done
 
     [[ "$verbose" == true ]] && echo "Total matched files: ${#matchedFiles[@]}"
@@ -588,9 +588,9 @@ EOF
                     base=$(basename "$fileFullPath")
                     if [[ -n "$base" ]]; then
                         if [[ -n "${matchedDirMap[$dir]}" ]]; then
-                            matchedDirMap[$dir]="${matchedDirMap[$dir]}, $base"
+                            matchedDirMap[$dir]="${matchedDirMap[$dir]}, \"$base\""
                         else
-                            matchedDirMap[$dir]="$base"
+                            matchedDirMap[$dir]="\"$base\""
                         fi
                     fi
                 done
@@ -613,13 +613,13 @@ EOF
                     ((currentFile++))
                     relativePath="${file#$inputDir/}"
                     relativePath="$(basename "$fullInputDir")/${relativePath}"
-                    absolutePath=$(realpath "$file")
+                    absolutePath="$(realpath "$file")"
                     filename="$(basename "$file")"
                     echo "    <File>"
                     echo "      <Filename>$filename</Filename>"
                     if [[ "$showPaths" == true ]]; then
-                        echo "      <RelativePath>$relativePath</RelativePath>"
-                        echo "      <AbsolutePath>$absolutePath</AbsolutePath>"
+                        echo "      <RelativePath>\"$relativePath\"</RelativePath>"
+                        echo "      <AbsolutePath>\"$absolutePath\"</AbsolutePath>"
                     fi
                     echo "      <Content><![CDATA["
                     if [[ -r "$file" ]]; then
@@ -655,9 +655,9 @@ EOF
                     base=$(basename "$fileFullPath")
                     if [[ -n "$base" ]]; then
                         if [[ -n "${matchedDirMap[$dir]}" ]]; then
-                            matchedDirMap[$dir]="${matchedDirMap[$dir]}, $base"
+                            matchedDirMap[$dir]="${matchedDirMap[$dir]}, \"$base\""
                         else
-                            matchedDirMap[$dir]="$base"
+                            matchedDirMap[$dir]="\"$base\""
                         fi
                     fi
                 done
@@ -683,7 +683,7 @@ EOF
                     ((currentFile++))
                     relativePath="${file#$inputDir/}"
                     relativePath="$(basename "$fullInputDir")/${relativePath}"
-                    absolutePath=$(realpath "$file")
+                    absolutePath="$(realpath "$file")"
                     filename="$(basename "$file")"
                     echo ""
                     echo "--------------------------------------------------------------------------------"
@@ -696,7 +696,7 @@ EOF
                     if [[ -r "$file" ]]; then
                         cat "$file"
                         echo ""
-                        echo "# EOF: $file"
+                        echo "# EOF: \"$file\""
                         echo "================================================================================"
                     else
                         echo "Error: Cannot read file '$file'." >&2
@@ -773,9 +773,9 @@ EOF
                     base=$(basename "$fileFullPath")
                     if [[ -n "$base" ]]; then
                         if [[ -n "${matchedDirMap[$dir]}" ]]; then
-                            matchedDirMap[$dir]="${matchedDirMap[$dir]}, $base"
+                            matchedDirMap[$dir]="${matchedDirMap[$dir]}, \"$base\""
                         else
-                            matchedDirMap[$dir]="$base"
+                            matchedDirMap[$dir]="\"$base\""
                         fi
                     fi
                 done
@@ -795,7 +795,7 @@ EOF
             tempInputDir="$inputDir"
             tempInputDir="${tempInputDir/#.\//}"
             tempInputDir="${tempInputDir%/}"
-            echo "      <Directory>$(basename "$(realpath "$tempInputDir")")</Directory>"
+            echo "      <Directory>\"$(basename "$(realpath "$tempInputDir")")\"</Directory>"
             echo "      <Tree><![CDATA["
             echo "$fullTree"
             echo "]]></Tree>"
@@ -838,7 +838,7 @@ EOF
                     else
                         relativeDir="$inputDirName/${dir#$fullInputDir/}"
                     fi
-                    echo "      <DirectoryEntry>$relativeDir: ${dirMap[$dir]}</DirectoryEntry>"
+                    echo "      <DirectoryEntry>\"$relativeDir\": ${dirMap[$dir]}</DirectoryEntry>"
                 done | sort -V
                 echo "    </DirectoryStructureList>"
             fi
@@ -852,13 +852,13 @@ EOF
                     ((currentFile++))
                     relativePath="${file#$inputDir/}"
                     relativePath="${inputDirName}/${relativePath}"
-                    absolutePath=$(realpath "$file")
+                    absolutePath="$(realpath "$file")"
                     filename="$(basename "$file")"
                     echo "    <File>"
                     echo "      <Filename>$filename</Filename>"
                     if [[ "$showPaths" == true ]]; then
-                        echo "      <RelativePath>$relativePath</RelativePath>"
-                        echo "      <AbsolutePath>$absolutePath</AbsolutePath>"
+                        echo "      <RelativePath>\"$relativePath\"</RelativePath>"
+                        echo "      <AbsolutePath>\"$absolutePath\"</AbsolutePath>"
                     fi
                     echo "      <Content><![CDATA["
                     if [[ -r "$file" ]]; then
@@ -890,9 +890,9 @@ EOF
                     base=$(basename "$fileFullPath")
                     if [[ -n "$base" ]]; then
                         if [[ -n "${matchedDirMap[$dir]}" ]]; then
-                            matchedDirMap[$dir]="${matchedDirMap[$dir]}, $base"
+                            matchedDirMap[$dir]="${matchedDirMap[$dir]}, \"$base\""
                         else
-                            matchedDirMap[$dir]="$base"
+                            matchedDirMap[$dir]="\"$base\""
                         fi
                     fi
                 done
@@ -918,7 +918,7 @@ EOF
                     ((currentFile++))
                     relativePath="${file#$inputDir/}"
                     relativePath="$(basename "$fullInputDir")/${relativePath}"
-                    absolutePath=$(realpath "$file")
+                    absolutePath="$(realpath "$file")"
                     filename="$(basename "$file")"
                     echo ""
                     echo "--------------------------------------------------------------------------------"
@@ -931,7 +931,7 @@ EOF
                     if [[ -r "$file" ]]; then
                         cat "$file"
                         echo ""
-                        echo "# EOF: $file"
+                        echo "# EOF: \"$file\""
                         echo "================================================================================"
                     else
                         echo "Error: Cannot read file '$file'." >&2
@@ -951,7 +951,7 @@ EOF
     # Final Status Message and Cleanup
     # -------------------------------------------------------------------------
     if [[ "$verbose" == true ]]; then
-        echo "All files have been concatenated into '$outputFilePath'."
+        echo "All files have been concatenated into \"$outputFilePath\"."
     fi
 
     if [[ "$debug" == true ]]; then
