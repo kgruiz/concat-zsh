@@ -379,11 +379,39 @@ EOF
     # -------------------------------------------------------------------------
     # Prepare Output File and Directory
     # -------------------------------------------------------------------------
+    # Ensure output directory exists
     mkdir -p "$outputDir" || { echo "Error: Cannot create output directory \"$outputDir\"." >&2; return 1; }
+
+    # Define default output file names (for both text and XML)
+    defaultTextOutput="$outputDir/concatOutput.txt"
+    defaultXmlOutput="$outputDir/concatOutput.xml"
+
+    # Delete any old default output files, regardless of current run settings
+    if [[ -e "$defaultTextOutput" ]]; then
+        rm "$(realpath "$defaultTextOutput")"
+    fi
+
+    if [[ -e "$defaultXmlOutput" ]]; then
+        rm "$(realpath "$defaultXmlOutput")"
+    fi
+
+    # Ensure the current run's output file has the proper extension
+    if [[ "$xmlOutput" == true ]]; then
+        case "$outputFile" in
+            *.xml) ;;  # Already correct
+            *) outputFile="${outputFile}.xml" ;;  # Append .xml if missing
+        esac
+    else
+        case "$outputFile" in
+            *.txt) ;;  # Already correct
+            *) outputFile="${outputFile}.txt" ;;  # Append .txt if missing
+        esac
+    fi
+
+    # Build the current output file path and remove it if it exists
     outputFilePath="$outputDir/$outputFile"
     if [[ -e "$outputFilePath" ]]; then
-        fullOutputPath="$(realpath "$outputFilePath")"
-        rm "$fullOutputPath"
+        rm "$(realpath "$outputFilePath")"
     fi
 
     # -------------------------------------------------------------------------
