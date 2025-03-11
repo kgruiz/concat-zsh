@@ -28,7 +28,7 @@ Input/Output:
       Directory to search for files (default: current directory).
 
   -o, --output <file>
-      Name or path of the concatenated output file (default: "concatOutput.txt").
+    Output file name (default: "concat-<rootdirname>.txt" or ".xml").
 
   -D, --output-dir <dir>
       Directory to save the output file (default: current directory).
@@ -107,7 +107,7 @@ EOF
     # -------------------------------------------------------------------------
     # Set Default Configuration Values
     # -------------------------------------------------------------------------
-    outputFile="concatOutput.txt"
+    outputFile=""
     userOutputProvided=false
     outputDir="."
     inputDir="."
@@ -317,16 +317,21 @@ EOF
     done
 
     # -------------------------------------------------------------------------
-    # Update default output file extension for XML output if not user-provided
+    # Update default output file extension based on input directory name if not user-provided
     # -------------------------------------------------------------------------
-    if [[ "$xmlOutput" == true && "$userOutputProvided" == false ]]; then
-        outputFile="concatOutput.xml"
-    fi
 
     # -------------------------------------------------------------------------
     # Determine Input Directory Base Name
     # -------------------------------------------------------------------------
     inputDirName="$(basename "$(realpath "$inputDir")")"
+    # Update default output file based on input directory name if user did not provide one
+    if [[ "$userOutputProvided" == false ]]; then
+        if [[ "$xmlOutput" == true ]]; then
+            outputFile="concat-${inputDirName}.xml"
+        else
+            outputFile="concat-${inputDirName}.txt"
+        fi
+    fi
 
     # -------------------------------------------------------------------------
     # Process Extensions
@@ -383,8 +388,8 @@ EOF
     mkdir -p "$outputDir" || { echo "Error: Cannot create output directory \"$outputDir\"." >&2; return 1; }
 
     # Define default output file names (for both text and XML)
-    defaultTextOutput="$outputDir/concatOutput.txt"
-    defaultXmlOutput="$outputDir/concatOutput.xml"
+    defaultTextOutput="$outputDir/concat-${inputDirName}.txt"
+    defaultXmlOutput="$outputDir/concat-${inputDirName}.xml"
 
     # Delete any old default output files, regardless of current run settings
     if [[ -e "$defaultTextOutput" ]]; then
@@ -605,7 +610,7 @@ EOF
         {
             echo '<?xml version="1.0" encoding="UTF-8"?>'
             if [[ "$showDirList" == true ]]; then
-                echo '<ConcatOutput>'
+                echo "<concat${inputDirName}>"
                 # Output matched directory list
                 echo "  <MatchedFilesDirectoryStructureList>"
                 typeset -A matchedDirMap
@@ -663,7 +668,7 @@ EOF
             fi
             echo "  </FileContents>"
             if [[ "$showDirList" == true ]]; then
-                echo "</ConcatOutput>"
+                echo "</concat${inputDirName}>"
             else
                 echo "</FileContentsOnly>"
             fi
@@ -748,7 +753,7 @@ EOF
             fullCommand=${fullCommand% }
 
             echo '<?xml version="1.0" encoding="UTF-8"?>'
-            echo '<ConcatOutput>'
+            echo "<concat${inputDirName}>"
 
             if [[ "$addTitle" == true ]]; then
                 echo "  <Title>"
@@ -902,7 +907,7 @@ EOF
             fi
             echo "  </FileContents>"
 
-            echo "</ConcatOutput>"
+            echo "</concat${inputDirName}>"
         } > "$outputFilePath"
         else
         {
