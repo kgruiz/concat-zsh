@@ -28,7 +28,7 @@ Input/Output:
       Directory to search for files (default: current directory).
 
   -o, --output <file>
-    Output file name (default: "concat-<rootdirname>.txt" or ".xml").
+    Output file name (default: "_concat-<rootdirname>.txt" or ".xml").
 
   -D, --output-dir <dir>
       Directory to save the output file (default: current directory).
@@ -327,9 +327,9 @@ EOF
     # Update default output file based on input directory name if user did not provide one
     if [[ "$userOutputProvided" == false ]]; then
         if [[ "$xmlOutput" == true ]]; then
-            outputFile="concat-${inputDirName}.xml"
+            outputFile="_concat-${inputDirName}.xml"
         else
-            outputFile="concat-${inputDirName}.txt"
+            outputFile="_concat-${inputDirName}.txt"
         fi
     fi
 
@@ -388,8 +388,8 @@ EOF
     mkdir -p "$outputDir" || { echo "Error: Cannot create output directory \"$outputDir\"." >&2; return 1; }
 
     # Define default output file names (for both text and XML)
-    defaultTextOutput="$outputDir/concat-${inputDirName}.txt"
-    defaultXmlOutput="$outputDir/concat-${inputDirName}.xml"
+    defaultTextOutput="$outputDir/_concat-${inputDirName}.txt"
+    defaultXmlOutput="$outputDir/_concat-${inputDirName}.xml"
 
     # Delete any old default output files, regardless of current run settings
     if [[ -e "$defaultTextOutput" ]]; then
@@ -756,48 +756,48 @@ EOF
             echo "<concat${inputDirName}>"
 
             if [[ "$addTitle" == true ]]; then
-                echo "  <Title>"
-                echo "    <Text>Contents of '$inputDirName'</Text>"
-                echo "  </Title>"
+                echo "  <title>"
+                echo "    <text>Contents of '$inputDirName'</text>"
+                echo "  </title>"
             fi
 
             if [[ "$showParams" == true ]]; then
-                echo "  <Parameters>"
-                echo "  <Command>concat ${fullCommand}</Command>"
-                echo "    <Extensions>"
+                echo "  <parameters>"
+                echo "  <command>concat ${fullCommand}</command>"
+                echo "    <extensions>"
                 if [[ ${#extensionsArray[@]} -eq 0 ]]; then
-                    echo "      <Value>All</Value>"
+                    echo "      <value>All</value>"
                 else
                     for ext in "${extensionsArray[@]}"; do
-                        echo "      <Value>$ext</Value>"
+                        echo "      <value>$ext</value>"
                     done
                 fi
-                echo "    </Extensions>"
-                echo "    <ExcludePatterns>"
+                echo "    </extensions>"
+                echo "    <excludePatterns>"
                 if [[ ${#excludePatterns[@]} -eq 0 ]]; then
-                    echo "      <Value>N/A</Value>"
+                    echo "      <value>N/A</value>"
                 else
                     for pat in "${excludePatterns[@]}"; do
-                        echo "      <Value>$pat</Value>"
+                        echo "      <value>$pat</value>"
                     done
                 fi
-                echo "    </ExcludePatterns>"
-                echo "    <IncludePatterns>"
+                echo "    </excludePatterns>"
+                echo "    <includePatterns>"
                 if [[ ${#includePatterns[@]} -eq 0 ]]; then
-                    echo "      <Value>All</Value>"
+                    echo "      <value>All</value>"
                 else
                     for pat in "${includePatterns[@]}"; do
-                        echo "      <Value>$pat</Value>"
+                        echo "      <value>$pat</value>"
                     done
                 fi
-                echo "    </IncludePatterns>"
-                echo "    <CaseSensitive>$caseSensitive</CaseSensitive>"
-                echo "    <TotalMatchedFiles>${#matchedFiles[@]}</TotalMatchedFiles>"
-                echo "  </Parameters>"
+                echo "    </includePatterns>"
+                echo "    <caseSensitive>$caseSensitive</caseSensitive>"
+                echo "    <totalMatchedFiles>${#matchedFiles[@]}</totalMatchedFiles>"
+                echo "  </parameters>"
             fi
 
             if [[ "$showDirList" == true ]]; then
-                echo "  <MatchedFilesDirectoryStructureList>"
+                echo "  <matchedDirList>"
                 typeset -A matchedDirMap
                 fullInputDir="$(realpath "$inputDir")"
                 for file in "${matchedFiles[@]}"; do
@@ -818,24 +818,24 @@ EOF
                     else
                         relativeDir="$inputDirName/${dir#$fullInputDir/}"
                     fi
-                    echo "      <DirectoryEntry>\"$relativeDir\": [${matchedDirMap[$dir]}]</DirectoryEntry>"
+                    echo "      <dirEntry>\"$relativeDir\": [${matchedDirMap[$dir]}]</dirEntry>"
                 done | sort -V
-                echo "  </MatchedFilesDirectoryStructureList>"
+                echo "  </matchedDirList>"
             fi
 
-            echo "  <TreeOutput>"
-            echo "    <TreeRepresentation>"
+            echo "  <treeOutput>"
+            echo "    <treeRepresentation>"
             tempInputDir="$inputDir"
             tempInputDir="${tempInputDir/#.\//}"
             tempInputDir="${tempInputDir%/}"
-            echo "      <Directory>\"$(basename "$(realpath "$tempInputDir")")\"</Directory>"
-            echo "      <Tree><![CDATA["
+            echo "      <dir>\"$(basename "$(realpath "$tempInputDir")")\"</dir>"
+            echo "      <tree><![CDATA["
             echo "$fullTree"
-            echo "]]></Tree>"
-            echo "    </TreeRepresentation>"
+            echo "]]></tree>"
+            echo "    </treeRepresentation>"
 
             if [[ "$showDirList" == true ]]; then
-                echo "    <DirectoryStructureList>"
+                echo "    <dirList>"
                 typeset -A dirMap
                 fullOutputPath="$(realpath "$outputFilePath")"
                 while IFS= read -r dir; do
@@ -871,13 +871,13 @@ EOF
                     else
                         relativeDir="$inputDirName/${dir#$fullInputDir/}"
                     fi
-                    echo "      <DirectoryEntry>\"$relativeDir\": ${dirMap[$dir]}</DirectoryEntry>"
+                    echo "      <dirEntry>\"$relativeDir\": ${dirMap[$dir]}</dirEntry>"
                 done | sort -V
-                echo "    </DirectoryStructureList>"
+                echo "    </dirList>"
             fi
-            echo "  </TreeOutput>"
+            echo "  </treeOutput>"
 
-            echo "  <FileContents>"
+            echo "  <fileContents>"
             totalFiles=${#matchedFiles[@]}
             if [[ $totalFiles -gt 0 ]]; then
                 currentFile=0
@@ -887,11 +887,11 @@ EOF
                     relativePath="${inputDirName}/${relativePath}"
                     absolutePath="$(realpath "$file")"
                     filename="$(basename "$file")"
-                    echo "    <File>"
-                    echo "      <Filename>$filename</Filename>"
+                    echo "    <file>"
+                    echo "      <filename>$filename</filename>"
                     if [[ "$showPaths" == true ]]; then
-                        echo "      <RelativePath>\"$relativePath\"</RelativePath>"
-                        echo "      <AbsolutePath>\"$absolutePath\"</AbsolutePath>"
+                        echo "      <relPath>\"$relativePath\"</relPath>"
+                        echo "      <absPath>\"$absolutePath\"</absPath>"
                     fi
                     echo "      <Content><![CDATA["
                     if [[ -r "$file" ]]; then
@@ -899,13 +899,13 @@ EOF
                     else
                         echo "Error: Cannot read file '$file'."
                     fi
-                    echo "]]></Content>"
-                    echo "    </File>"
+                    echo "]]></content>"
+                    echo "    </file>"
                 done
             else
-                echo "    <Message>No files to concatenate.</Message>"
+                echo "    <message>No files to concatenate.</message>"
             fi
-            echo "  </FileContents>"
+            echo "  </fileContents>"
 
             echo "</concat${inputDirName}>"
         } > "$outputFilePath"
