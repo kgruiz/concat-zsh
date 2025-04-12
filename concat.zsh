@@ -609,10 +609,10 @@ EOF
         if [[ "$xmlOutput" == true ]]; then
         {
             echo '<?xml version="1.0" encoding="UTF-8"?>'
+            echo "<concat${inputDirName}>"
             if [[ "$showDirList" == true ]]; then
-                echo "<concat${inputDirName}>"
                 # Output matched directory list
-                echo "  <MatchedFilesDirectoryStructureList>"
+                echo "  <matchedFilesDirStructureList>"
                 typeset -A matchedDirMap
                 fullInputDir="$(realpath "$inputDir")"
                 for file in "${matchedFiles[@]}"; do
@@ -633,12 +633,12 @@ EOF
                     else
                         relativeDir="$(basename "$fullInputDir")/${dir#$fullInputDir/}"
                     fi
-                    echo "    <DirectoryEntry>\"$relativeDir\": [${matchedDirMap[$dir]}]</DirectoryEntry>"
+                    echo "    <dirEntry>\"$relativeDir\": [${matchedDirMap[$dir]}]</dirEntry>"
                 done | sort -V
-                echo "  </MatchedFilesDirectoryStructureList>"
+                echo "  </matchedFilesDirStructureList>"
             fi
             # Always output file contents.
-            echo "  <FileContents>"
+            echo "  <fileContents>"
             totalFiles=${#matchedFiles[@]}
             if [[ $totalFiles -gt 0 ]]; then
                 currentFile=0
@@ -648,30 +648,26 @@ EOF
                     relativePath="$(basename "$fullInputDir")/${relativePath}"
                     absolutePath="$(realpath "$file")"
                     filename="$(basename "$file")"
-                    echo "    <File>"
-                    echo "      <Filename>$filename</Filename>"
+                    echo "    <file>"
+                    echo "      <filename>$filename</filename>"
                     if [[ "$showPaths" == true ]]; then
-                        echo "      <RelativePath>\"$relativePath\"</RelativePath>"
-                        echo "      <AbsolutePath>\"$absolutePath\"</AbsolutePath>"
+                        echo "      <relativePath>\"$relativePath\"</relativePath>"
+                        echo "      <absolutePath>\"$absolutePath\"</absolutePath>"
                     fi
-                    echo "      <Content><![CDATA["
+                    echo "      <content><![CDATA["
                     if [[ -r "$file" ]]; then
                         cat "$file"
                     else
                         echo "Error: Cannot read file '$file'."
                     fi
-                    echo "]]></Content>"
+                    echo "]]></content>"
                     echo "    </File>"
                 done
             else
-                echo "    <Message>No files to concatenate.</Message>"
+                echo "    <message>No files to concatenate.</message>"
             fi
-            echo "  </FileContents>"
-            if [[ "$showDirList" == true ]]; then
-                echo "</concat${inputDirName}>"
-            else
-                echo "</FileContentsOnly>"
-            fi
+            echo "  </fileContents>"
+            echo "</concat${inputDirName}>"
         } > "$outputFilePath"
         else
         {
@@ -893,7 +889,7 @@ EOF
                         echo "      <relPath>\"$relativePath\"</relPath>"
                         echo "      <absPath>\"$absolutePath\"</absPath>"
                     fi
-                    echo "      <Content><![CDATA["
+                    echo "      <content><![CDATA["
                     if [[ -r "$file" ]]; then
                         cat "$file"
                     else
