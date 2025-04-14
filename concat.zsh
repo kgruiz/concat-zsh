@@ -661,7 +661,7 @@ EOF
                         echo "Error: Cannot read file '$file'."
                     fi
                     echo "]]></content>"
-                    echo "    </File>"
+                    echo "    </file>"
                 done
             else
                 echo "    <message>No files to concatenate.</message>"
