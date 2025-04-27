@@ -75,19 +75,19 @@ Integrate the `concat` function into your Zsh environment by selecting one of th
 
    ```zsh
    # Source all custom Zsh functions from ~/.zsh_functions
-   if [[ -d "$HOME/.zsh_functions" ]]; then
-       for func_file in "$HOME/.zsh_functions"/*.zsh; do
-           if [[ -f "$func_file" ]]; then
-               if ! source "$func_file" 2>/dev/null; then
-                   echo "Error: Failed to source $(basename "$func_file"). Please verify the file's path and integrity." >&2
-               fi
-           else
-               echo "Warning: '$func_file' is not a regular file or does not exist." >&2
-           fi
-       done
-   else
-       echo "Error: Directory '$HOME/.zsh_functions' does not exist. Please create it and add your function files." >&2
-   fi
+   ZSH_FUNCTIONS_DIR="$HOME/.zsh_functions"
+    if [ -d "$ZSH_FUNCTIONS_DIR" ]; then
+        for funcPath in "$ZSH_FUNCTIONS_DIR"/*.zsh; do
+            [ -f "$funcPath" ] || continue
+            fileName="$(basename "$funcPath")"
+            if ! . "$funcPath" 2>&1; then
+                echo "Error: Failed to source \"$fileName\"" >&2
+            fi
+        done
+    else
+        echo "Error: \"$ZSH_FUNCTIONS_DIR\" not found or not a directory" >&2
+    fi
+    unset ZSH_FUNCTIONS_DIR
    ```
 
 4. **Reload Your Zsh Configuration**
