@@ -7,16 +7,16 @@
 - [Overview](#overview)
 - [Features](#features)
 - [Installation](#installation)
-  - [Method 1: Automatic Sourcing of All Custom Functions](#method-1-automatic-sourcing-of-all-custom-functions)
-  - [Method 2: Direct Sourcing of the `concat` Function](#method-2-direct-sourcing-of-the-concat-function)
+- [Method 1: Automatic Sourcing of All Custom Functions](#method-1-automatic-sourcing-of-all-custom-functions)
+- [Method 2: Direct Sourcing of the `concat` Function](#method-2-direct-sourcing-of-the-concat-function)
 - [Quick Start](#quick-start)
 - [Usage](#usage)
-  - [Basic Syntax](#basic-syntax)
-  - [Options](#options)
-  - [Examples](#examples)
+- [Basic Syntax](#basic-syntax)
+- [Options](#options)
+- [Examples](#examples)
 - [Contributing](#contributing)
-  - [How to Contribute](#how-to-contribute)
-  - [Reporting Issues](#reporting-issues)
+- [How to Contribute](#how-to-contribute)
+- [Reporting Issues](#reporting-issues)
 - [Support](#support)
 - [License](#license)
 
@@ -48,35 +48,35 @@ Integrate the `concat` function into your Zsh environment by selecting one of th
 
 1. **Create a Directory for Custom Functions**
 
-   Ensure a dedicated directory for your custom Zsh functions exists. If not, create one using the following command:
+Ensure a dedicated directory for your custom Zsh functions exists. If not, create one using the following command:
 
-   ```zsh
-   mkdir -p ~/.zsh_functions
-   ```
+```zsh
+mkdir -p ~/.zsh_functions
+```
 
 2. **Add the `concat.zsh` File**
 
-   Move the `concat.zsh` file into the `~/.zsh_functions` directory:
+Move the `concat.zsh` file into the `~/.zsh_functions` directory:
 
-   ```zsh
-   mv /path/to/concat.zsh ~/.zsh_functions/concat.zsh
-   ```
+```zsh
+mv /path/to/concat.zsh ~/.zsh_functions/concat.zsh
+```
 
-   *Replace `/path/to/concat.zsh` with the actual path to your `concat.zsh` file.*
+*Replace `/path/to/concat.zsh` with the actual path to your `concat.zsh` file.*
 
 3. **Configure Your Zsh Profile**
 
-   Open your `~/.zshrc` file in your preferred text editor:
+Open your `~/.zshrc` file in your preferred text editor:
 
-   ```zsh
-   nano ~/.zshrc
-   ```
+```zsh
+nano ~/.zshrc
+```
 
-   Append the following script to source all `.zsh` files within the `~/.zsh_functions` directory:
+Append the following script to source all `.zsh` files within the `~/.zsh_functions` directory:
 
-   ```zsh
-   # Source all custom Zsh functions from ~/.zsh_functions
-   ZSH_FUNCTIONS_DIR="$HOME/.zsh_functions"
+```zsh
+# Source all custom Zsh functions from ~/.zsh_functions
+ZSH_FUNCTIONS_DIR="$HOME/.zsh_functions"
     if [ -d "$ZSH_FUNCTIONS_DIR" ]; then
         for funcPath in "$ZSH_FUNCTIONS_DIR"/*.zsh; do
             [ -f "$funcPath" ] || continue
@@ -89,15 +89,15 @@ Integrate the `concat` function into your Zsh environment by selecting one of th
         echo "Error: \"$ZSH_FUNCTIONS_DIR\" not found or not a directory" >&2
     fi
     unset ZSH_FUNCTIONS_DIR
-   ```
+```
 
 4. **Reload Your Zsh Configuration**
 
-   Apply the changes by sourcing your updated `~/.zshrc`:
+Apply the changes by sourcing your updated `~/.zshrc`:
 
-   ```zsh
-   source ~/.zshrc
-   ```
+```zsh
+source ~/.zshrc
+```
 
 ### Method 2: Direct Sourcing of the `concat` Function
 
@@ -105,54 +105,55 @@ Integrate the `concat` function into your Zsh environment by selecting one of th
 
 1. **Create a Directory for Custom Functions (Optional but Recommended)**
 
-   While optional, organizing your custom functions in a dedicated directory enhances maintainability. Create one if you haven't already:
+While optional, organizing your custom functions in a dedicated directory enhances maintainability. Create one if you haven't already:
 
-   ```zsh
-   mkdir -p ~/.zsh_functions
-   ```
+```zsh
+mkdir -p ~/.zsh_functions
+```
 
 2. **Add the `concat.zsh` File**
 
-   Move the `concat.zsh` file into the `~/.zsh_functions` directory:
+Move the `concat.zsh` file into the `~/.zsh_functions` directory:
 
-   ```zsh
-   mv /path/to/concat.zsh ~/.zsh_functions/concat.zsh
-   ```
+```zsh
+mv /path/to/concat.zsh ~/.zsh_functions/concat.zsh
+```
 
-   *Replace `/path/to/concat.zsh` with the actual path to your `concat.zsh` file.*
+*Replace `/path/to/concat.zsh` with the actual path to your `concat.zsh` file.*
 
 3. **Configure Your Zsh Profile**
 
-   Open your `~/.zshrc` file in your preferred text editor:
+Open your `~/.zshrc` file in your preferred text editor:
 
-   ```zsh
-   nano ~/.zshrc
-   ```
+```zsh
+nano ~/.zshrc
+```
 
-   Append the following script to source the `concat.zsh` function directly:
+Append the following script to source the `concat.zsh` function directly:
 
-   ```zsh
-   # Source the concat function
-   CONCAT_FUNC_PATH="$HOME/.zsh_functions/concat.zsh"
-
-   if [[ -f "$CONCAT_FUNC_PATH" ]]; then
-       if ! source "$CONCAT_FUNC_PATH" 2>/dev/null; then
-           echo "Error: Failed to source 'concat.zsh'. Please verify the file's path and integrity." >&2
-       fi
-   else
-       echo "Error: 'concat.zsh' not found in '$HOME/.zsh_functions/'. Please ensure the file exists." >&2
-   fi
-   ```
+```zsh
+# Source the concat function
+CONCAT_FUNC_PATH="$HOME/.zsh_functions/concat.zsh"
+if [ -f "$CONCAT_FUNC_PATH" ]; then
+    if ! . "$CONCAT_FUNC_PATH" 2>&1; then
+        echo "Error: Failed to source \"$(basename "$CONCAT_FUNC_PATH")\"" >&2
+    fi
+else
+    echo "Error: \"$(basename "$CONCAT_FUNC_PATH")\" not found at:" >&2
+    echo "  $CONCAT_FUNC_PATH" >&2
+fi
+unset CONCAT_FUNC_PATH
+```
 
 4. **Reload Your Zsh Configuration**
 
-   Apply the changes by sourcing your updated `~/.zshrc`:
+Apply the changes by sourcing your updated `~/.zshrc`:
 
-   ```zsh
-   source ~/.zshrc
-   ```
+```zsh
+source ~/.zshrc
+```
 
-   **Note:** Only error messages will appear if issues are encountered during sourcing.
+**Note:** Only error messages will appear if issues are encountered during sourcing.
 
 ## Quick Start
 
