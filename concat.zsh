@@ -28,7 +28,7 @@ Input/Output:
       Directory to search for files (default: current directory).
 
   -o, --output <file>
-    Output file name (default: "_concat-<rootdirname>.txt" or ".xml").
+    Output file name (default: "_concat-<rootdirname>.xml" or ".txt" if --text is used).
 
   -D, --output-dir <dir>
       Directory to save the output file (default: current directory).
@@ -62,16 +62,15 @@ Formatting:
       Do not add a title/header line at the start of the output file.
 
   -x, --xml
-      Format the output as XML instead of plain text.
+      (Flag removed, XML is default)
 
   -m, --minimal
-      Minimal mode. By default outputs matched directory list and file contents,
-      but omits file paths. See --paths.
+      (Flag removed, Minimal is default)
 
   -p, --paths <TRUE|FALSE>
       Explicitly set whether to output the relative and absolute paths for each file.
-      Accepts TRUE, FALSE, 1, or 0 (not case sensitive). In minimal mode the default is FALSE,
-      in non-minimal mode the default is TRUE.
+      Accepts TRUE, FALSE, 1, or 0 (not case sensitive). Default is FALSE.
+      If --full is used, the default becomes TRUE for that run unless overridden by --paths FALSE.
 
   -N, --no-params
       Do not output the parameters block.
@@ -81,6 +80,12 @@ Formatting:
 
   -W, --no-tree
       Do not include a directory tree representation in the output.
+
+  --text
+      Output in plain text format instead of the default XML.
+
+  --full
+      Enable full (non-minimal) output mode instead of the default minimal mode. Includes parameters, tree, etc., and enables file paths by default.
 
 Miscellaneous:
   -P, --no-purge-pycache
@@ -124,14 +129,14 @@ EOF
     delPyCache=true
     debug=false
     excludeNonText=true
-    xmlOutput=false
-    minimalMode=false
+    xmlOutput=true # Default changed to XML output
+    minimalMode=true # Default is minimal mode
 
     showParams=true
     showDirList=true
 
-    # In non‑minimal mode default is TRUE.
-    showPaths=true
+    # In minimal mode default is FALSE. Changed default.
+    showPaths=false
 
     # -------------------------------------------------------------------------
     # Parse Command-Line Options
@@ -239,14 +244,12 @@ EOF
             ;;
 
             --xml|-x)
-                xmlOutput=true
+                # Flag removed, XML is default
                 shift
             ;;
 
             --minimal|-m)
-                minimalMode=true
-                # In minimal mode, default showPaths to FALSE unless overridden later.
-                showPaths=false
+                # Flag removed, Minimal is default
                 shift
             ;;
 
@@ -288,6 +291,17 @@ EOF
                 shift
             ;;
 
+            --text)
+                xmlOutput=false # Switch from default XML to text
+                shift
+            ;;
+
+            --full)
+                minimalMode=false # Switch from default minimal to full
+                showPaths=true # Default paths to TRUE in full mode, unless overridden by --paths FALSE later
+                shift
+            ;;
+
             --verbose|-v)
                 verbose=true
                 shift
@@ -315,10 +329,6 @@ EOF
             ;;
         esac
     done
-
-    # -------------------------------------------------------------------------
-    # Update default output file extension based on input directory name if not user-provided
-    # -------------------------------------------------------------------------
 
     # -------------------------------------------------------------------------
     # Determine Input Directory Base Name
@@ -907,6 +917,42 @@ EOF
         } > "$outputFilePath"
         else
         {
+            # Non-XML Full Mode
+            if [[ "$addTitle" == true ]]; then
+                echo "--------------------------------------------------------------------------------"
+                echo "# Title: Contents of '$inputDirName'"
+                echo "********************************************************************************"
+                echo ""
+            fi
+
+            if [[ "$showParams" == true ]]; then
+                fullCommand=$(printf '%q ' "${originalArgs[@]}")
+                fullCommand=${fullCommand% }
+                echo "--------------------------------------------------------------------------------"
+                echo "# Parameters"
+                echo "********************************************************************************"
+                echo "Command: concat ${fullCommand}"
+                if [[ ${#extensionsArray[@]} -eq 0 ]]; then
+                    echo "Extensions: All"
+                else
+                    echo "Extensions: ${extensionsArray[@]}"
+                fi
+                if [[ ${#excludePatterns[@]} -eq 0 ]]; then
+                    echo "Exclude Patterns: N/A"
+                else
+                    echo "Exclude Patterns: ${excludePatterns[@]}"
+                fi
+                if [[ ${#includePatterns[@]} -eq 0 ]]; then
+                    echo "Include Patterns: All"
+                else
+                    echo "Include Patterns: ${includePatterns[@]}"
+                fi
+                echo "Case Sensitive: $caseSensitive"
+                echo "Total Matched Files: ${#matchedFiles[@]}"
+                echo "================================================================================"
+                echo ""
+            fi
+
             if [[ "$showDirList" == true ]]; then
                 echo "--------------------------------------------------------------------------------"
                 echo "# Directory Structure List (Matched Files Only)"
@@ -935,6 +981,64 @@ EOF
                 done | sort -V
                 echo "================================================================================"
                 echo ""
+            fi
+
+            if [[ "$tree" == true ]]; then
+                echo "--------------------------------------------------------------------------------"
+                echo "# Directory Tree Representation"
+                echo "********************************************************************************"
+                tempInputDir="$inputDir"
+                tempInputDir="${tempInputDir/#.\//}"
+                tempInputDir="${tempInputDir%/}"
+                echo "\"$(basename "$(realpath "$tempInputDir")")\""
+                echo "$fullTree"
+                echo "================================================================================"
+                echo ""
+
+                if [[ "$showDirList" == true ]]; then
+                    echo "--------------------------------------------------------------------------------"
+                    echo "# Directory Structure List (All Files/Dirs)"
+                    echo "********************************************************************************"
+                    typeset -A dirMap
+                    fullOutputPath="$(realpath "$outputFilePath")"
+                    while IFS= read -r dir; do
+                        fullPath="$(realpath "$dir")"
+                        if IsPathHidden "$fullPath" && [[ "$includeHidden" == false ]]; then
+                            continue
+                        fi
+                        children=("${(@f)$(find "$dir" -mindepth 1 -maxdepth 1 | sort -V)}")
+                        childrenBase=()
+                        for child in "${children[@]}"; do
+                            if [[ -z "$child" ]]; then
+                                continue
+                            fi
+                            fullChildPath="$(realpath "$child")"
+                            if IsPathHidden "$fullChildPath" && [[ "$includeHidden" == false ]]; then
+                                continue
+                            elif [[ "$fullChildPath" == "$fullOutputPath" ]]; then
+                                continue
+                            fi
+                            childrenBase+=("$(basename "$child")")
+                        done
+                        if [[ ${#childrenBase[@]} -gt 0 ]]; then
+                            childrenStr=$(printf ", \"%s\"" "${childrenBase[@]}")
+                            childrenStr="${childrenStr:2}"
+                            dirMap["$dir"]="[$childrenStr]"
+                        else
+                            dirMap["$dir"]="[]"
+                        fi
+                    done < <(find "$inputDir" -type d | sort -V)
+                    for dir in ${(k)dirMap}; do
+                        if [[ "$dir" == "$inputDir" ]]; then
+                            relativeDir="$inputDirName"
+                        else
+                            relativeDir="$inputDirName/${dir#$fullInputDir/}"
+                        fi
+                        echo "\"$relativeDir\": ${dirMap[$dir]}"
+                    done | sort -V
+                    echo "================================================================================"
+                    echo ""
+                fi
             fi
 
             echo "--------------------------------------------------------------------------------"

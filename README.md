@@ -31,11 +31,12 @@
 - **Exclusion Patterns**: Exclude specific files or directories using patterns or wildcards.
 - **Hidden Files Handling**: Option to include or exclude hidden files and directories.
 - **Python Cache Cleanup**: Automatically remove `__pycache__` directories and `.pyc` files.
-- **Directory Tree Overview**: Generate a tree structure of the target directory in the output.
+- **Directory Tree Overview**: Generate a tree structure of the target directory in the output (non-minimal mode).
 - **Verbose and Debug Modes**: Enable logging and execution tracing for troubleshooting.
 - **Binary File Exclusion**: Automatically skip unreadable or binary files if desired.
 - **Customizable Output**: Specify output file names and directories.
 - **LLM-Friendly Concatenation**: Organize file aggregation for compatibility with Large Language Models.
+- **XML and Minimal Mode Defaults**: Sensible defaults for common use cases, with flags to switch to text or full output.
 
 ## Installation
 
@@ -155,10 +156,20 @@ Integrate the `concat` function into your Zsh environment by selecting one of th
 
 ## Quick Start
 
-After installation, you can concatenate files by specifying the desired extensions. For example, to concatenate all Python files in the current directory:
+After installation, you can concatenate files by specifying the desired extensions. The output will be XML and minimal by default.
 
 ```zsh
+# Concatenate all Python files in the current directory (default XML, minimal output)
 concat .py
+
+# Concatenate Python files, output as plain text
+concat .py --text
+
+# Concatenate Python files, use full output mode (includes params, tree, paths by default)
+concat .py --full
+
+# Concatenate Python files, full output mode, but explicitly disable paths
+concat .py --full --paths FALSE
 ```
 
 ## Usage
@@ -179,7 +190,7 @@ concat [extensions] [OPTIONS]
 
 | Option                        | Short | Description                                                                                                                                          |
 |-------------------------------|-------|------------------------------------------------------------------------------------------------------------------------------------------------------|
-| `--output-file <file>`        | `-f`  | Name or path for the concatenated output file. Defaults to `concatOutput.txt`.                                                                       |
+| `--output <file>`             | `-o`  | Name or path for the concatenated output file. Defaults to `_concat-<rootdirname>.xml` (or `.txt` if `--text` is used).                               |
 | `--output-dir <dir>`          | `-d`  | Directory where the output file will be saved. Defaults to the current directory.                                                                    |
 | `--input-dir <dir>`           | `-i`  | Directory to search for files. Can be relative or absolute. Defaults to the current directory.                                                        |
 | `--exclude <patterns>`        | `-e`  | Comma-separated list of file or directory paths/patterns to exclude. Supports wildcards.                                                             |
@@ -190,10 +201,13 @@ concat [extensions] [OPTIONS]
 | `--no-title`                  |       | Exclude the title line from the output file.                                                                                                         |
 | `--verbose`                   | `-v`  | Enable verbose output, showing matched files and other details.                                                                                      |
 | `--case-sensitive-extensions` | `-c`  | Match file extensions case-sensitively. Default is `false`.                                                                                          |
-| `--case-sensitive-excludes`   | `-s`  | Match exclude patterns case-sensitively. Default is `false`.                                                                                         |
-| `--case-sensitive-all`        | `-a`  | Enable case-sensitive matching for both extensions and exclude patterns, overriding the two options above. Default is `false`.                        |
-| `--tree`                      | `-T`  | Include a tree representation of directories in the output. Default is `true`.                                                                        |
-| `--no-tree`                   |       | Disable the tree representation in the output (overrides `--tree`).                                                                                   |
+| `--case-sensitive`            | `-C`  | Enable case-sensitive matching for extensions and exclude patterns. Default is `false`.                                                              |
+| `--text`                      |       | Output in plain text format instead of the default XML.                                                                                              |
+| `--full`                      |       | Enable full (non-minimal) output mode instead of the default minimal mode. Includes parameters, tree, etc., and enables file paths by default.       |
+| `--paths <TRUE|FALSE>`        | `-p`  | Explicitly set whether to output file paths. Default is `FALSE`. If `--full` is used, the default becomes `TRUE` unless overridden by `--paths FALSE`. |
+| `--no-params`                 | `-N`  | Do not output the parameters block (non-minimal mode).                                                                                               |
+| `--no-dir-list`               | `-L`  | Do not output the matched directory list.                                                                                                            |
+| `--no-tree`                   | `-W`  | Disable the tree representation in the output (non-minimal mode).                                                                                    |
 | `--include-hidden`            | `-H`  | Include hidden files and directories in the search. Default is `false`.                                                                               |
 | `--no-include-hidden`         |       | Exclude hidden files and directories from the search.                                                                                                |
 | `--delPyCache`                | `-p`  | Automatically delete `__pycache__` folders and `.pyc` files. Default is `true`.                                                                       |
@@ -205,40 +219,40 @@ concat [extensions] [OPTIONS]
 
 ### Examples
 
-1. **Concatenate Python Files, Exclude `__init__.py`, and Specify Output File**
+1. **Concatenate Python Files (Default XML, Minimal Output)**
 
     ```zsh
-    concat .py --output-file allPython.txt --exclude __init__.py
+    concat .py
     ```
 
-2. **Concatenate Python and JavaScript Files Recursively with Verbose Output**
+2. **Concatenate Python and JavaScript Files, Output as Plain Text**
 
     ```zsh
-    concat py,js -r -v
+    concat py,js --text
     ```
 
-3. **Concatenate Files Without Adding a Title, Specify Input and Output Directories**
+3. **Concatenate Files Using Full Output Mode, Specify Input/Output Dirs**
 
     ```zsh
-    concat --no-title --input-dir ~/project --output-dir ~/Desktop
+    concat --full --input-dir ~/project --output-dir ~/Desktop
     ```
 
-4. **Exclude Specific Extensions and Include Hidden Files**
+4. **Exclude Specific Extensions, Include Hidden Files, Use Full Mode**
 
     ```zsh
-    concat txt,md -X log,tmp -H
+    concat txt,md -X log,tmp -H --full
     ```
 
-5. **Enable Debug Mode for Troubleshooting**
+5. **Enable Debug Mode for Troubleshooting (Default XML/Minimal)**
 
     ```zsh
     concat .sh --debug
     ```
 
-6. **Disable Automatic Exclusion of Binary Files**
+6. **Use Full Mode but Disable Tree Output and Paths**
 
     ```zsh
-    concat .sh --no-exclude-binary
+    concat .java --full --no-tree --paths FALSE
     ```
 
 ## Contributing
