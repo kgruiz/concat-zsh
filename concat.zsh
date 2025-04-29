@@ -69,7 +69,7 @@ Options:
       Only include files whose full path matches this glob pattern.
       Can be specified multiple times. Globs apply after extension filtering.
 
-  -E, --exclude <glob>
+  -e, -E, --exclude <glob>
       Exclude files whose full path matches this glob pattern.
       Can be specified multiple times. Exclusions apply last.
 
@@ -143,7 +143,7 @@ EOF
       expanded_flags=("${expanded_flags[@]:1}") # Equivalent to shift expanded_flags
 
       case "$arg" in
-        -o|-x|-I|-E)
+        -o|-x|-I|-e|-E)
           # preserve flag and its next token as literal
           if (( ${#expanded_flags[@]} == 0 )); then
               echo "Error: Option $arg requires an argument." >&2; return 1
@@ -230,7 +230,7 @@ EOF
                      return 1
                 fi
             ;;
-            -E|--exclude)
+            -e|-E|--exclude)
                  if [[ -n "$2" && "$2" != --* ]]; then
                     excludeGlobs+=("$2")
                     shift 2
@@ -265,8 +265,14 @@ EOF
                 # Help text displayed at the top, just exit
                 return 0
             ;;
-            --*)
+            -?*)                           # any unrecognised short option
                 echo "Unknown option: $1" >&2
+                echo "Usage: concat [OPTIONS] [FILE...]" >&2
+                return 1
+            ;;
+            --*)                           # any unrecognised long option
+                echo "Unknown option: $1" >&2
+                echo "Usage: concat [OPTIONS] [FILE...]" >&2
                 return 1
             ;;
             *)
