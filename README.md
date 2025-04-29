@@ -269,7 +269,7 @@ Contributions are welcome! Whether you're reporting a bug, suggesting a feature,
 2. **Clone Your Fork**
 
     ```zsh
-    git clone https://github.com/your-username/concat-zsh.git
+    git clone https://github.com/kgruiz/concat-zsh.git
     cd concat-zsh
     ```
 
@@ -301,11 +301,11 @@ Contributions are welcome! Whether you're reporting a bug, suggesting a feature,
 
 ### Reporting Issues
 
-If you encounter any issues or have feature requests, please open an issue in the repository's [Issues](https://github.com/your-username/concat-zsh/issues) section. Include detailed information to help maintainers address the problem effectively.
+If you encounter any issues or have feature requests, please open an issue in the repository's [Issues](https://github.com/kgruiz/concat-zsh/issues) section. Include detailed information to help maintainers address the problem effectively.
 
 ## Support
 
-For support, please open an issue in the [Issues](https://github.com/your-username/concat-zsh/issues) section of the repository.
+For support, please open an issue in the [Issues](https://github.com/kgruiz/concat-zsh/issues) section of the repository.
 
 ## License
 
