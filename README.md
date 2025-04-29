@@ -1,6 +1,6 @@
 # concat-zsh
 
-`concat` is a Zsh function designed to merge the contents of multiple files based on specified extensions and filtering criteria. Developed to aggregate files for use as context in Large Language Model (LLM) queries, `concat` is a useful tool for developers and system administrators seeking to organize and consolidate project files efficiently.
+`concat` is a Zsh function designed to merge the contents of multiple files or files within specified directories into a single output file. It supports filtering by extension, include/exclude patterns, recursive search, and handling hidden files. Developed initially to aggregate files for use as context in Large Language Model (LLM) queries, `concat` is a versatile tool for developers and system administrators seeking to organize and consolidate project files efficiently.
 
 ## Table of Contents
 
@@ -12,6 +12,7 @@
 - [Quick Start](#quick-start)
 - [Usage](#usage)
 - [Basic Syntax](#basic-syntax)
+- [Positional Arguments](#positional-arguments)
 - [Options](#options)
 - [Examples](#examples)
 - [Contributing](#contributing)
@@ -22,21 +23,20 @@
 
 ## Overview
 
-`concat` facilitates the combination of file contents by providing filtering and concatenation options. Whether preparing code snippets for LLMs, consolidating logs, or managing files within larger projects, this tool offers a straightforward and customizable approach.
+`concat` facilitates the combination of file contents by providing flexible filtering and concatenation options. Whether preparing code snippets for LLMs, consolidating logs, or managing files within larger projects, this tool offers a straightforward and customizable approach.
 
 ## Features
 
-- **Extension Filtering**: Select files by one or multiple extensions (e.g., `.py`, `.js`, `.txt`).
-- **Recursive Search**: Traverse directories recursively or limit the search to the top level.
-- **Exclusion Patterns**: Exclude specific files or directories using patterns or wildcards.
-- **Hidden Files Handling**: Option to include or exclude hidden files and directories.
-- **Python Cache Cleanup**: Automatically remove `__pycache__` directories and `.pyc` files.
-- **Directory Tree Overview**: Generate a tree structure of the target directory in the output (non-minimal mode).
-- **Verbose and Debug Modes**: Enable logging and execution tracing for troubleshooting.
-- **Binary File Exclusion**: Automatically skip unreadable or binary files if desired.
-- **Customizable Output**: Specify output file names and directories.
-- **LLM-Friendly Concatenation**: Organize file aggregation for compatibility with Large Language Models.
-- **XML and Minimal Mode Defaults**: Sensible defaults for common use cases, with flags to switch to text or full output.
+- **Flexible Input**: Accepts multiple files, directories, or glob patterns as input.
+- **Extension Filtering**: Select files by one or multiple extensions (e.g., `py`, `js`, `txt`).
+- **Recursive Search**: Traverse directories recursively (default) or limit the search to the top level.
+- **Include/Exclude Patterns**: Filter files based on full path glob patterns. Exclude patterns match against both full path and basename, and simple filenames are treated as `**/filename`.
+- **Hidden Files Handling**: Option to include hidden files and directories.
+- **Python Cache Cleanup**: Optionally remove `__pycache__` directories and `.pyc` files found in the current working directory.
+- **Directory Tree Overview**: Optionally include a `tree` representation of the current directory in the output.
+- **Output Formats**: Generate output in XML (default) or plain text format.
+- **Verbose and Debug Modes**: Enable detailed logging and execution tracing for troubleshooting.
+- **Customizable Output**: Specify output file names.
 
 ## Installation
 
@@ -61,8 +61,6 @@ Move the `concat.zsh` file into the `~/.zsh_functions` directory:
 ```zsh
 mv /path/to/concat.zsh ~/.zsh_functions/concat.zsh
 ```
-
-*Replace `/path/to/concat.zsh` with the actual path to your `concat.zsh` file.*
 
 3. **Configure Your Zsh Profile**
 
@@ -119,8 +117,6 @@ Move the `concat.zsh` file into the `~/.zsh_functions` directory:
 mv /path/to/concat.zsh ~/.zsh_functions/concat.zsh
 ```
 
-*Replace `/path/to/concat.zsh` with the actual path to your `concat.zsh` file.*
-
 3. **Configure Your Zsh Profile**
 
 Open your `~/.zshrc` file in your preferred text editor:
@@ -157,103 +153,104 @@ source ~/.zshrc
 
 ## Quick Start
 
-After installation, you can concatenate files by specifying the desired extensions. The output will be XML and minimal by default.
+After installation, you can concatenate files by specifying input files/directories and desired options.
 
 ```zsh
-# Concatenate all Python files in the current directory (default XML, minimal output)
-concat .py
+# Concatenate all Python files in the current directory and subdirectories (default XML output)
+concat -x py .
 
-# Concatenate Python files, output as plain text
-concat .py --text
+# Concatenate all files in 'src' directory, output as plain text
+concat -t src/
 
-# Concatenate Python files, use full output mode (includes params, tree, paths by default)
-concat .py --full
+# Concatenate specific files and files matching a pattern
+concat main.py utils.py 'lib/**/*.js'
 
-# Concatenate Python files, full output mode, but explicitly disable paths
-concat .py --full --paths FALSE
+# Concatenate Python files, include hidden files, show directory tree
+concat -x py -H -T .
 ```
 
 ## Usage
 
-The `concat` function offers various options to customize how files are merged. Below are detailed instructions on its usage.
+The `concat` function offers various options to customize how files are found and merged.
 
 ### Basic Syntax
 
 ```zsh
-concat [extensions] [OPTIONS]
+concat [OPTIONS] [FILE...]
 ```
 
-**Arguments:**
+### Positional Arguments
 
-- `[extensions]`: Specify a single extension (e.g., `.py`) or a comma-separated list of extensions (e.g., `.py,.js` or `txt,md`). If omitted, all file extensions are included.
+- `[FILE...]`: One or more files, directories, or glob patterns to process. If omitted, the current directory (`.`) is used.
 
 ### Options
 
-| Option                        | Short | Description                                                                                                                                          |
-|-------------------------------|-------|------------------------------------------------------------------------------------------------------------------------------------------------------|
-| `--output <file>`             | `-o`  | Name or path for the concatenated output file. Defaults to `_concat-<rootdirname>.xml` (or `.txt` if `--text` is used).                               |
-| `--output-dir <dir>`          | `-d`  | Directory where the output file will be saved. Defaults to the current directory.                                                                    |
-| `--input-dir <dir>`           | `-i`  | Directory to search for files. Can be relative or absolute. Defaults to the current directory.                                                        |
-| `--exclude <patterns>`        | `-e`  | Comma-separated list of file or directory paths/patterns to exclude. Supports wildcards.                                                             |
-| `--exclude-extensions <exts>` | `-X`  | Comma-separated list of file extensions to exclude (e.g., `txt,log`). Extensions can be prefixed with `.` or provided as plain text.                 |
-| `--recursive`                 | `-r`  | Recursively search subdirectories. Default is `true`.                                                                                                |
-| `--no-recursive`              |       | Disable recursive search.                                                                                                                            |
-| `--title`                     | `-t`  | Include a title line at the start of the output file. Default is `true`.                                                                             |
-| `--no-title`                  |       | Exclude the title line from the output file.                                                                                                         |
-| `--verbose`                   | `-v`  | Enable verbose output, showing matched files and other details.                                                                                      |
-| `--case-sensitive-extensions` | `-c`  | Match file extensions case-sensitively. Default is `false`.                                                                                          |
-| `--case-sensitive`            | `-C`  | Enable case-sensitive matching for extensions and exclude patterns. Default is `false`.                                                              |
-| `--text`                      |       | Output in plain text format instead of the default XML.                                                                                              |
-| `--full`                      |       | Enable full (non-minimal) output mode instead of the default minimal mode. Includes parameters, tree, etc., and enables file paths by default.       |
-| `--paths <TRUE|FALSE>`        | `-p`  | Explicitly set whether to output file paths. Default is `FALSE`. If `--full` is used, the default becomes `TRUE` unless overridden by `--paths FALSE`. |
-| `--no-params`                 | `-N`  | Do not output the parameters block (non-minimal mode).                                                                                               |
-| `--no-dir-list`               | `-L`  | Do not output the matched directory list.                                                                                                            |
-| `--no-tree`                   | `-W`  | Disable the tree representation in the output (non-minimal mode).                                                                                    |
-| `--include-hidden`            | `-H`  | Include hidden files and directories in the search. Default is `false`.                                                                               |
-| `--no-include-hidden`         |       | Exclude hidden files and directories from the search.                                                                                                |
-| `--delPyCache`                | `-p`  | Automatically delete `__pycache__` folders and `.pyc` files. Default is `true`.                                                                       |
-| `--no-delPyCache`             |       | Disable automatic deletion of `__pycache__` and `.pyc` files.                                                                                        |
-| `--exclude-binary`            | `-B`  | Automatically exclude unreadable or binary files from concatenation. Default is `true`.                                                              |
-| `--no-exclude-binary`         |       | Do not exclude unreadable or binary files (overrides `--exclude-binary`).                                                                             |
-| `--debug`                     | `-x`  | Enable debug mode with verbose execution tracing.                                                                                                     |
-| `--help`                      | `-h`  | Display the help message and exit.                                                                                                                    |
+| Option                 | Short | Description                                                                                                                                                           | Default                               |
+| ---------------------- | ----- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------- |
+| `--output <file>`      | `-o`  | Output file name.                                                                                                                                                     | `_concat-output.xml` or `.txt`        |
+| `--recursive`          | `-r`  | Search directories recursively.                                                                                                                                       | Enabled                               |
+| `--no-recursive`       | `-n`  | Do not search directories recursively.                                                                                                                                | Disabled                              |
+| `--text`               | `-t`  | Output in plain text format instead of XML.                                                                                                                           | XML format                            |
+| `--ext <ext>`          | `-x`  | Only include files with this extension (e.g., `py`, `txt`). Can be specified multiple times. Case-insensitive. Excludes the dot.                                      | All extensions                        |
+| `--include <glob>`     | `-I`  | Only include files whose full path matches this glob pattern. Can be specified multiple times. Applied after extension filtering.                                     | Include all (after extension filter)  |
+| `--exclude <glob>`     | `-e`, `-E` | Exclude files matching the glob pattern. Can be specified multiple times. Applied last. Patterns match against the full path **or** the basename. Simple filenames (no `/` or wildcards) are treated as `**/filename`. | Exclude none                          |
+| `--tree`               | `-T`  | Include a directory tree representation (of the current directory) in the output. Requires the `tree` command.                                                        | Disabled                              |
+| `--hidden`             | `-H`  | Include hidden files and files in hidden directories (starting with `.`). By default, they are skipped unless explicitly listed or matched by an include glob.        | Disabled                              |
+| `--no-purge-pycache`   | `-P`  | Do not delete `__pycache__` directories and `.pyc` files found within the current working directory.                                                                  | Purge enabled                         |
+| `--verbose`            | `-v`  | Show detailed output, including matched and skipped files, configuration, etc.                                                                                        | Disabled                              |
+| `--debug`              | `-d`  | Enable debug mode with Zsh execution tracing (`set -x`).                                                                                                              | Disabled                              |
+| `--help`               | `-h`  | Show the help message and exit.                                                                                                                                       | N/A                                   |
 
 ### Examples
 
-1. **Concatenate Python Files (Default XML, Minimal Output)**
+1. **Concatenate Python Files in Current Directory (XML Output)**
 
     ```zsh
-    concat .py
+    concat -x py .
+    # Output: _concat-output.xml
     ```
 
-2. **Concatenate Python and JavaScript Files, Output as Plain Text**
+2. **Concatenate Python and JavaScript Files in `src`, Output as Plain Text**
 
     ```zsh
-    concat py,js --text
+    concat -t -x py -x js src/
+    # Output: _concat-output.txt
     ```
 
-3. **Concatenate Files Using Full Output Mode, Specify Input/Output Dirs**
+3. **Concatenate All Files in `project`, Exclude `*.log` and `build/` dir, Custom Output**
 
     ```zsh
-    concat --full --input-dir ~/project --output-dir ~/Desktop
+    # Excludes any file ending in .log (basename match)
+    # Excludes any file whose path matches */build/* (full path match)
+    concat -o my_project.xml -E '*.log' -E '*/build/*' ~/project
     ```
 
-4. **Exclude Specific Extensions, Include Hidden Files, Use Full Mode**
+4. **Exclude a Specific Filename Everywhere**
 
     ```zsh
-    concat txt,md -X log,tmp -H --full
+    # Excludes any file named 'config.json' anywhere in the tree
+    concat -E config.json .
     ```
 
-5. **Enable Debug Mode for Troubleshooting (Default XML/Minimal)**
+5. **Concatenate Text Files, Include Hidden Files, Show Tree, Verbose Output**
 
     ```zsh
-    concat .sh --debug
+    concat -x txt -H -T -v .
+    # Output: _concat-output.xml (includes tree, verbose messages printed)
     ```
 
-6. **Use Full Mode but Disable Tree Output and Paths**
+6. **Concatenate Specific Files and Non-Recursive Search in a Directory**
 
     ```zsh
-    concat .java --full --no-tree --paths FALSE
+    concat -n config.yaml main.py data/
+    # Concatenates config.yaml, main.py, and files directly inside data/
+    ```
+
+7. **Enable Debug Mode for Troubleshooting**
+
+    ```zsh
+    concat -d -x sh scripts/
+    # Prints execution trace to stderr
     ```
 
 ## Contributing
@@ -281,7 +278,7 @@ Contributions are welcome! Whether you're reporting a bug, suggesting a feature,
 
 4. **Make Your Changes**
 
-    Ensure your code adheres to the project's coding standards and includes necessary documentation.
+    Ensure your code adheres to the project's coding standards and includes necessary documentation. Update the README if options or behavior change.
 
 5. **Commit Your Changes**
 
@@ -297,11 +294,11 @@ Contributions are welcome! Whether you're reporting a bug, suggesting a feature,
 
 7. **Open a Pull Request**
 
-    Navigate to the original repository and click "New Pull Request." Provide a clear description of your changes and their purpose.
+    Navigate to the original repository (`kgruiz/concat-zsh`) and click "New Pull Request." Provide a clear description of your changes and their purpose.
 
 ### Reporting Issues
 
-If you encounter any issues or have feature requests, please open an issue in the repository's [Issues](https://github.com/kgruiz/concat-zsh/issues) section. Include detailed information to help maintainers address the problem effectively.
+If you encounter any issues or have feature requests, please open an issue in the repository's [Issues](https://github.com/kgruiz/concat-zsh/issues) section. Include detailed information, steps to reproduce, expected vs. actual behavior, and your environment details (OS, Zsh version) to help maintainers address the problem effectively.
 
 ## Support
 

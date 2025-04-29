@@ -232,7 +232,13 @@ EOF
             ;;
             -e|-E|--exclude)
                  if [[ -n "$2" && "$2" != --* ]]; then
-                    excludeGlobs+=("$2")
+                    # If the user gave just a filename (no slash or wildcard),
+                    # match it anywhere in the tree.
+                    if [[ "$2" != */* && "$2" != *[\*\?\[]* ]]; then
+                        excludeGlobs+=("**/$2")
+                    else
+                        excludeGlobs+=("$2")
+                    fi
                     shift 2
                 else
                      echo "Error: --exclude requires a glob pattern argument." >&2
@@ -545,8 +551,8 @@ EOF
         if [[ ${#excludeGlobs[@]} -gt 0 ]]; then
             local exclude_match=false
             for pattern in "${excludeGlobs[@]}"; do
-                 # Match pattern against full path using zsh globbing
-                if [[ ${~file_path} == ${~pattern} ]]; then
+                # Match against full path *or* basename
+                if [[ ${~file_path} == ${~pattern} || "$file_basename" == ${~pattern} ]]; then
                     exclude_match=true
                     break
                 fi
