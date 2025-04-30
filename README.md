@@ -16,7 +16,6 @@
 - [Options](#options)
 - [Examples](#examples)
 - [Contributing](#contributing)
-- [How to Contribute](#how-to-contribute)
 - [Reporting Issues](#reporting-issues)
 - [Support](#support)
 - [License](#license)
@@ -199,6 +198,7 @@ concat [OPTIONS] [FILE...]
 | `--no-purge-pycache`   | `-P`  | Do not delete `__pycache__` directories and `.pyc` files found within the current working directory.                                                                  | Purge enabled                         |
 | `--verbose`            | `-v`  | Show detailed output, including matched and skipped files, configuration, etc.                                                                                        | Disabled                              |
 | `--debug`              | `-d`  | Enable debug mode with Zsh execution tracing (`set -x`).                                                                                                              | Disabled                              |
+| `--no-dir-list`       | `-l`  | Do not list input directories at the top of the output | Disabled |
 | `--help`               | `-h`  | Show the help message and exit.                                                                                                                                       | N/A                                   |
 
 ### Examples
@@ -207,36 +207,38 @@ concat [OPTIONS] [FILE...]
 
     ```zsh
     concat -x py .
-    # Output: _concat-output.xml
+    # Output: `<current-directory>-output.xml`
+    # (e.g. if cwd is `flatten-zsh`, file is `flatten-zsh-output.xml`)
     ```
 
 2. **Concatenate Python and JavaScript Files in `src`, Output as Plain Text**
 
     ```zsh
     concat -t -x py -x js src/
-    # Output: _concat-output.txt
+    # Output: `src-output.txt`
     ```
 
 3. **Concatenate All Files in `project`, Exclude `*.log` and `build/` dir, Custom Output**
 
     ```zsh
-    # Excludes any file ending in .log (basename match)
-    # Excludes any file whose path matches */build/* (full path match)
+    # Excludes *.log (basename match) and */build/* (full-path match)
     concat -o my_project.xml -E '*.log' -E '*/build/*' ~/project
     ```
 
 4. **Exclude a Specific Filename Everywhere**
 
     ```zsh
-    # Excludes any file named 'config.json' anywhere in the tree
     concat -E config.json .
+    # Output: `<current-directory>-output.txt`
+    # (e.g. `flatten-zsh-output.txt`)
     ```
 
 5. **Concatenate Text Files, Include Hidden Files, Show Tree, Verbose Output**
 
     ```zsh
     concat -x txt -H -T -v .
-    # Output: _concat-output.xml (includes tree, verbose messages printed)
+    # Output: `<current-directory>-output.xml`
+    # (includes tree, verbose messages printed)
     ```
 
 6. **Concatenate Specific Files and Non-Recursive Search in a Directory**
@@ -244,13 +246,7 @@ concat [OPTIONS] [FILE...]
     ```zsh
     concat -n config.yaml main.py data/
     # Concatenates config.yaml, main.py, and files directly inside data/
-    ```
-
-7. **Enable Debug Mode for Troubleshooting**
-
-    ```zsh
-    concat -d -x sh scripts/
-    # Prints execution trace to stderr
+    # Output: `data-output.xml`
     ```
 
 ## Contributing

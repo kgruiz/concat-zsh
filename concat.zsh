@@ -92,6 +92,9 @@ Options:
   -d, --debug
       Enable debug mode with execution tracing.
 
+  -l, --no-dir-list
+      Do not include a directory-grouped list of matched files.
+
   -h, --help
       Show this help message and exit.
 EOF
@@ -114,6 +117,7 @@ EOF
     local includeHidden=false
     local format="xml" # xml or text
     local showTree=false
+    local showDirList=true
     local delPyCache=true
     local verbose=false
     local debug=false
@@ -264,6 +268,11 @@ EOF
             -d|--debug)
                 debug=true
                 set -x # Enable shell debug mode.
+                trap 'set +x' RETURN
+                shift
+            ;;
+            -l|--no-dir-list)
+                showDirList=false
                 shift
             ;;
             -h|--help) # Already handled, but catch here too
@@ -298,6 +307,9 @@ EOF
         inputs=(".")
     fi
 
+    # Track the (only) input directory for later relative-path mapping
+    local inputDir="${inputs[1]}"
+
     # -------------------------------------------------------------------------
     # Determine Output File Path
     # -------------------------------------------------------------------------
@@ -307,15 +319,39 @@ EOF
         outputDir="$(dirname "$outputFile")"
         outputBaseName="$(basename "$outputFile")"
         # Ensure output directory exists
-        mkdir -p "$outputDir" || { echo "Error: Cannot create output directory \"$outputDir\"." >&2; return 1; }
+        mkdir -p "$outputDir" || {
+            echo "Error: Cannot create output directory \"$outputDir\"." >&2
+            return 1
+        }
     else
-        # Set default name based on format
-        if [[ "$format" == "xml" ]]; then
-            outputBaseName="_concat-output.xml"
+        # Default output filename based on extension filters, user args, or project name
+        if [[ ${#exts[@]} -gt 0 ]]; then
+            # Extension-based defaults
+            if [[ ${#exts[@]} -eq 1 ]]; then
+                ext="${exts[1]}"
+                if [[ "$ext" == "txt" ]]; then
+                    outputBaseName="_concat-txt.txt"
+                else
+                    outputBaseName="_concat-${ext}.xml"
+                fi
+            else
+                outputBaseName="_concat-output.xml"
+            fi
+        elif [[ ${#originalArgs[@]} -eq 0 ]]; then
+            projectBase="$(basename "$(realpath ".")" | tr -d '\n\r')"
+            if [[ -n "$projectBase" ]]; then
+                outputBaseName="_concat-${projectBase}.txt"
+            else
+                outputBaseName="_concat-output.txt"
+            fi
+        elif [[ ${#inputs[@]} -eq 1 && -d "${inputs[1]}" ]]; then
+            singleDirBase="$(basename "$(realpath "${inputs[1]}")" | tr -d '\n\r')"
+            outputBaseName="_concat-${singleDirBase}.txt"
         else
             outputBaseName="_concat-output.txt"
         fi
-        outputFile="$outputDir/$outputBaseName" # Full path for default
+        outputFile="$outputDir/$outputBaseName"
+
     fi
 
     # Ensure the final output file has the correct extension based on format
@@ -332,6 +368,23 @@ EOF
     else
         outputFilePath="${PWD%/}/$outputBaseName"
     fi
+
+    # ---------------------------------------------------------------------
+    # Path normalisation & directory assurance
+    # ---------------------------------------------------------------------
+    # Remove any embedded newlines or carriage returns
+    outputFilePath="${outputFilePath//$'\n'/}"
+    outputFilePath="${outputFilePath//$'\r'/}"
+    # Collapse “/./” sequences and repeated slashes
+    outputFilePath="${outputFilePath//\/.\//\/}"
+    while [[ "$outputFilePath" == *//* ]]; do
+        outputFilePath="${outputFilePath//\/\//\/}"
+    done
+    # Ensure destination directory exists
+    mkdir -p "$(dirname "$outputFilePath")" || {
+        echo "Error: Cannot create output directory \"$(dirname "$outputFilePath")\"." >&2
+        return 1
+    }
 
 
     # Remove existing output file
@@ -353,6 +406,7 @@ EOF
         echo "Recursive: $recursive"
         echo "Include Hidden: $includeHidden"
         echo "Show Tree: $showTree"
+        echo "Show Dir List: $showDirList"
         echo "Purge Pycache (in CWD): $delPyCache"
         if [[ ${#exts[@]} -gt 0 ]]; then
             echo "Include Extensions: ${exts[@]}"
@@ -409,8 +463,7 @@ EOF
         fi
 
         # Use realpath to resolve symlinks and get absolute paths early
-        local resolved_item
-        resolved_item="$(realpath "$item")" || { echo "Warning: Cannot resolve path for input item, skipping: \"$item\"" >&2; continue; }
+        local resolved_item="$(realpath "$item")" || { echo "Warning: Cannot resolve path for input item, skipping: \"$item\"" >&2; continue; }
 
 
         if [[ -f "$resolved_item" ]]; then
@@ -428,9 +481,19 @@ EOF
             # Add pruning logic for hidden files/dirs if -H is not set
             if [[ "$includeHidden" == false ]]; then
                 # Prune any hidden file or directory at any depth under $resolved_item
-                find_cmd+=( '(' \
-                            -path "${resolved_item}/.*" \
-                        ')' '-prune' '-o' '-type' 'f' '-print' )
+                # Ensure we don't prune the starting directory itself if it's hidden but explicitly given
+                if [[ "$resolved_item" == */.* && "$item" == "$resolved_item" ]]; then
+                     # If the starting point is hidden and explicitly given, find files within it
+                     # but still prune deeper hidden dirs/files unless -H is set
+                     find_cmd+=( '(' \
+                                 -path "${resolved_item}/.*/*" -o -name '.*' \
+                             ')' '-prune' '-o' '-type' 'f' '-print' )
+                else
+                     # Standard pruning: prune anything starting with . inside the resolved_item path
+                     find_cmd+=( '(' \
+                                 -path "${resolved_item}/.*" \
+                             ')' '-prune' '-o' '-type' 'f' '-print' )
+                fi
             else
                 # If including hidden, just find all files
                 find_cmd+=( '-type' 'f' '-print' )
@@ -552,6 +615,7 @@ EOF
             local exclude_match=false
             for pattern in "${excludeGlobs[@]}"; do
                 # Match against full path *or* basename
+                # Use zsh globbing ($~) for pattern matching
                 if [[ ${~file_path} == ${~pattern} || "$file_basename" == ${~pattern} ]]; then
                     exclude_match=true
                     break
@@ -582,8 +646,11 @@ EOF
             [[ "$format" == "xml" ]] && tree_opts+=("-X") # XML output for tree
             # Tell tree to ignore hidden files/dirs if -H was not passed to concat
             # Use -a to include hidden, then -I to filter if needed.
-            tree_opts+=("-a") # Always include hidden for tree's perspective initially
-            [[ "$includeHidden" == false ]] && tree_opts+=("-I" ".*") # Then filter if needed
+            # tree_opts+=("-a") # Always include hidden for tree's perspective initially
+            # [[ "$includeHidden" == false ]] && tree_opts+=("-I" ".*") # Then filter if needed
+            # Simpler: Use -a only if includeHidden is true
+            [[ "$includeHidden" == true ]] && tree_opts+=("-a")
+
             # Run tree on current directory, capture output, remove first line ('.')
             fullTree="$(tree "${tree_opts[@]}" . | sed '1d')" || {
                  echo "Warning: 'tree' command failed." >&2
@@ -624,13 +691,44 @@ EOF
             echo "  </directoryTree>"
         fi
 
+        # ---------------------------------------------------------------------
+        # Optional matched-file directory list
+        # ---------------------------------------------------------------------
+        if [[ "$showDirList" == true ]]; then
+            echo "  <matchedFilesDirStructureList>"
+            typeset -A matchedDirMap
+            fullInputDir="$(realpath "$inputDir")"
+            for file in "${matchedFiles[@]}"; do
+                fileFullPath="$(realpath "$file")"
+                dir=$(dirname "$fileFullPath")
+                base=$(basename "$fileFullPath")
+                if [[ -n "$base" ]]; then
+                    if [[ -n "${matchedDirMap[$dir]}" ]]; then
+                        matchedDirMap[$dir]="${matchedDirMap[$dir]}, \"$base\""
+                    else
+                        matchedDirMap[$dir]="\"$base\""
+                    fi
+                fi
+            done
+            for dir in ${(k)matchedDirMap}; do
+                if [[ "$dir" == "$fullInputDir" ]]; then
+                    relativeDir="$(basename "$fullInputDir")"
+                else
+                    relativeDir="$(basename "$fullInputDir")/${dir#$fullInputDir/}"
+                fi
+                echo "    <dirEntry>\"$relativeDir\": [${matchedDirMap[$dir]}]</dirEntry>"
+            done | sort -V
+            echo "  </matchedFilesDirStructureList>"
+        fi
+
         # Add File Contents
         echo "  <fileContents count=\"${#matchedFiles[@]}\">"
         if [[ ${#matchedFiles[@]} -gt 0 ]]; then
             for file in "${matchedFiles[@]}"; do
                 local filename="$(basename "$file")"
                 # Use realpath again just to be absolutely sure it's canonical
-                local absolutePath="$(realpath "$file")"
+                local absolutePath
+                absolutePath="$(realpath "$file" 2>/dev/null)" || absolutePath="$file" # Fallback if realpath fails
                 echo "    <file>"
                 echo "      <path>$absolutePath</path>" # Use absolute path
                 echo "      <content><![CDATA["
@@ -668,7 +766,8 @@ EOF
             local currentFile=0
             for file in "${matchedFiles[@]}"; do
                 ((currentFile++))
-                local absolutePath="$(realpath "$file")"
+                local absolutePath
+                absolutePath="$(realpath "$file" 2>/dev/null)" || absolutePath="$file" # Fallback
                 echo ""
                 echo "--------------------------------------------------------------------------------"
                 echo "# File ${currentFile}/${#matchedFiles[@]}: $absolutePath"
