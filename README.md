@@ -7,13 +7,14 @@
 - [Overview](#overview)
 - [Features](#features)
 - [Installation](#installation)
-- [Method 1: Automatic Sourcing of All Custom Functions](#method-1-automatic-sourcing-of-all-custom-functions)
-- [Method 2: Direct Sourcing of the `concat` Function](#method-2-direct-sourcing-of-the-concat-function)
+  - [Method 1: Automatic Sourcing of All Custom Functions](#method-1-automatic-sourcing-of-all-custom-functions)
+  - [Method 2: Direct Sourcing of the `concat` Function](#method-2-direct-sourcing-of-the-concat-function)
 - [Quick Start](#quick-start)
 - [Usage](#usage)
-- [Basic Syntax](#basic-syntax)
-- [Positional Arguments](#positional-arguments)
+  - [Basic Syntax](#basic-syntax)
+  - [Positional Arguments](#positional-arguments)
 - [Options](#options)
+- [Output Filename Logic](#output-filename-logic)
 - [Examples](#examples)
 - [Contributing](#contributing)
 - [Reporting Issues](#reporting-issues)
@@ -47,130 +48,124 @@ Integrate the `concat` function into your Zsh environment by selecting one of th
 
 1. **Create a Directory for Custom Functions**
 
-Ensure a dedicated directory for your custom Zsh functions exists. If not, create one using the following command:
+   Ensure a dedicated directory for your custom Zsh functions exists. If not, create one:
 
-```zsh
-mkdir -p ~/.zsh_functions
-```
+   ```zsh
+   mkdir -p ~/.zsh_functions
+   ```
 
 2. **Add the `concat.zsh` File**
 
-Move the `concat.zsh` file into the `~/.zsh_functions` directory:
+   Move the `concat.zsh` file into your functions directory:
 
-```zsh
-mv /path/to/concat.zsh ~/.zsh_functions/concat.zsh
-```
+   ```zsh
+   mv /path/to/concat.zsh ~/.zsh_functions/concat.zsh
+   ```
 
 3. **Configure Your Zsh Profile**
 
-Open your `~/.zshrc` file in your preferred text editor:
+   Open `~/.zshrc` and add:
 
-```zsh
-nano ~/.zshrc
-```
-
-Append the following script to source all `.zsh` files within the `~/.zsh_functions` directory:
-
-```zsh
-# Source all custom Zsh functions from ~/.zsh_functions
-ZSH_FUNCTIONS_DIR="$HOME/.zsh_functions"
-    if [ -d "$ZSH_FUNCTIONS_DIR" ]; then
-        for funcPath in "$ZSH_FUNCTIONS_DIR"/*.zsh; do
-            [ -f "$funcPath" ] || continue
-            fileName="$(basename "$funcPath")"
-            if ! . "$funcPath" 2>&1; then
-                echo "Error: Failed to source \"$fileName\"" >&2
-            fi
-        done
-    else
-        echo "Error: \"$ZSH_FUNCTIONS_DIR\" not found or not a directory" >&2
-    fi
-    unset ZSH_FUNCTIONS_DIR
-```
+   ```zsh
+   # Source all custom Zsh functions from ~/.zsh_functions
+   ZSH_FUNCTIONS_DIR="$HOME/.zsh_functions"
+   if [ -d "$ZSH_FUNCTIONS_DIR" ]; then
+     for funcPath in "$ZSH_FUNCTIONS_DIR"/*.zsh; do
+       [ -f "$funcPath" ] || continue
+       if ! . "$funcPath" 2>&1; then
+         echo "Error: Failed to source \"$(basename "$funcPath")\"" >&2
+       fi
+     done
+   else
+     echo "Error: \"$ZSH_FUNCTIONS_DIR\" not found or not a directory" >&2
+   fi
+   unset ZSH_FUNCTIONS_DIR
+   ```
 
 4. **Reload Your Zsh Configuration**
 
-Apply the changes by sourcing your updated `~/.zshrc`:
-
-```zsh
-source ~/.zshrc
-```
+   ```zsh
+   source ~/.zshrc
+   ```
 
 ### Method 2: Direct Sourcing of the `concat` Function
 
-**Recommended for users who prefer to source the `concat` function individually. Creating a directory for functions is optional but recommended for better organization.**
+**Recommended for users who prefer to source the `concat` function individually.**
 
-1. **Create a Directory for Custom Functions (Optional but Recommended)**
+1. **(Optional) Create a Functions Directory**
 
-While optional, organizing your custom functions in a dedicated directory enhances maintainability. Create one if you haven't already:
-
-```zsh
-mkdir -p ~/.zsh_functions
-```
+   ```zsh
+   mkdir -p ~/.zsh_functions
+   ```
 
 2. **Add the `concat.zsh` File**
 
-Move the `concat.zsh` file into the `~/.zsh_functions` directory:
-
-```zsh
-mv /path/to/concat.zsh ~/.zsh_functions/concat.zsh
-```
+   ```zsh
+   mv /path/to/concat.zsh ~/.zsh_functions/concat.zsh
+   ```
 
 3. **Configure Your Zsh Profile**
 
-Open your `~/.zshrc` file in your preferred text editor:
+   Open `~/.zshrc` and add:
 
-```zsh
-nano ~/.zshrc
-```
-
-Append the following script to source the `concat.zsh` function directly:
-
-```zsh
-# Source the concat function
-CONCAT_FUNC_PATH="$HOME/.zsh_functions/concat.zsh"
-if [ -f "$CONCAT_FUNC_PATH" ]; then
-    if ! . "$CONCAT_FUNC_PATH" 2>&1; then
-        echo "Error: Failed to source \"$(basename "$CONCAT_FUNC_PATH")\"" >&2
-    fi
-else
-    echo "Error: \"$(basename "$CONCAT_FUNC_PATH")\" not found at:" >&2
-    echo "  $CONCAT_FUNC_PATH" >&2
-fi
-unset CONCAT_FUNC_PATH
-```
+   ```zsh
+   # Source the concat function
+   CONCAT_FUNC_PATH="$HOME/.zsh_functions/concat.zsh"
+   if [ -f "$CONCAT_FUNC_PATH" ]; then
+     if ! . "$CONCAT_FUNC_PATH" 2>&1; then
+       echo "Error: Failed to source \"$(basename "$CONCAT_FUNC_PATH")\"" >&2
+     fi
+   else
+     echo "Error: \"$(basename "$CONCAT_FUNC_PATH")\" not found at:" >&2
+     echo "  $CONCAT_FUNC_PATH" >&2
+   fi
+   unset CONCAT_FUNC_PATH
+   ```
 
 4. **Reload Your Zsh Configuration**
 
-Apply the changes by sourcing your updated `~/.zshrc`:
-
-```zsh
-source ~/.zshrc
-```
-
-**Note:** Only error messages will appear if issues are encountered during sourcing.
+   ```zsh
+   source ~/.zshrc
+   ```
 
 ## Quick Start
 
-After installation, you can concatenate files by specifying input files/directories and desired options.
+1. **Merge Python files (XML)**
 
-```zsh
-# Concatenate all Python files in the current directory and subdirectories (default XML output)
-concat -x py .
+   ```zsh
+   concat -x py .
+   # -> _concat-py.xml
+   ```
 
-# Concatenate all files in 'src' directory, output as plain text
-concat -t src/
+2. **Plain text for `src/` directory**
 
-# Concatenate specific files and files matching a pattern
-concat main.py utils.py 'lib/**/*.js'
+   ```zsh
+   concat --text src/
+   # -> _concat-src.txt
+   ```
 
-# Concatenate Python files, include hidden files, show directory tree
-concat -x py -H -T .
-```
+3. **Concatenate Markdown files (wildcard)**
+
+   ```zsh
+   concat -x md '*.md'
+   # -> _concat-md.xml
+   ```
+
+4. **Wildcard logs to plain text**
+
+   ```zsh
+   concat -t '*.log'
+   # -> _concat-log.txt
+   ```
+
+5. **Custom output filename**
+
+   ```zsh
+   concat -o summary.txt project/
+   # -> summary.txt
+   ```
 
 ## Usage
-
-The `concat` function offers various options to customize how files are found and merged.
 
 ### Basic Syntax
 
@@ -182,72 +177,87 @@ concat [OPTIONS] [FILE...]
 
 - `[FILE...]`: One or more files, directories, or glob patterns to process. If omitted, the current directory (`.`) is used.
 
-### Options
+## Options
 
-| Option                 | Short | Description                                                                                                                                                           | Default                               |
-| ---------------------- | ----- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------- |
-| `--output <file>`      | `-o`  | Output file name.                                                                                                                                                     | `_concat-output.xml` or `.txt`        |
-| `--recursive`          | `-r`  | Search directories recursively.                                                                                                                                       | Enabled                               |
-| `--no-recursive`       | `-n`  | Do not search directories recursively.                                                                                                                                | Disabled                              |
-| `--text`               | `-t`  | Output in plain text format instead of XML.                                                                                                                           | XML format                            |
-| `--ext <ext>`          | `-x`  | Only include files with this extension (e.g., `py`, `txt`). Can be specified multiple times. Case-insensitive. Excludes the dot.                                      | All extensions                        |
-| `--include <glob>`     | `-I`  | Only include files whose full path matches this glob pattern. Can be specified multiple times. Applied after extension filtering.                                     | Include all (after extension filter)  |
-| `--exclude <glob>`     | `-e`, `-E` | Exclude files matching the glob pattern. Can be specified multiple times. Applied last. Patterns match against the full path **or** the basename. Simple filenames (no `/` or wildcards) are treated as `**/filename`. | Exclude none                          |
-| `--tree`               | `-T`  | Include a directory tree representation (of the current directory) in the output. Requires the `tree` command.                                                        | Disabled                              |
-| `--hidden`             | `-H`  | Include hidden files and files in hidden directories (starting with `.`). By default, they are skipped unless explicitly listed or matched by an include glob.        | Disabled                              |
-| `--no-purge-pycache`   | `-P`  | Do not delete `__pycache__` directories and `.pyc` files found within the current working directory.                                                                  | Purge enabled                         |
-| `--verbose`            | `-v`  | Show detailed output, including matched and skipped files, configuration, etc.                                                                                        | Disabled                              |
-| `--debug`              | `-d`  | Enable debug mode with Zsh execution tracing (`set -x`).                                                                                                              | Disabled                              |
-| `--no-dir-list`       | `-l`  | Do not list input directories at the top of the output | Disabled |
-| `--help`               | `-h`  | Show the help message and exit.                                                                                                                                       | N/A                                   |
+| Option                   | Short     | Description                                                                 | Default                            |
+|--------------------------|-----------|-----------------------------------------------------------------------------|------------------------------------|
+| `--output <file>`        | `-o`      | Output file name.                                                           | `_concat-output.xml` or `.txt`     |
+| `--recursive`            | `-r`      | Search directories recursively.                                              | Enabled                            |
+| `--no-recursive`         | `-n`      | Do not search directories recursively.                                       | Disabled                           |
+| `--text`                 | `-t`      | Output in plain text format instead of XML.                                  | XML                                |
+| `--ext <ext>`            | `-x`      | Only include files with this extension (e.g., `py`, `txt`). Can be repeated. | All                                |
+| `--include <glob>`       | `-I`      | Include files whose full path matches this glob pattern.                     | After extension filter             |
+| `--exclude <glob>`       | `-e`, `-E`| Exclude files matching the glob pattern (full path or basename).              | None                               |
+| `--tree`                 | `-T`      | Include a directory tree representation (requires the `tree` command).       | Disabled                           |
+| `--hidden`               | `-H`      | Include hidden files and directories.                                        | Disabled                           |
+| `--no-purge-pycache`     | `-P`      | Do not delete `__pycache__` directories and `.pyc` files.                    | Purge enabled                      |
+| `--verbose`              | `-v`      | Show matched/skipped files and settings.                                     | Disabled                           |
+| `--debug`                | `-d`      | Enable debug mode with Zsh execution tracing (`set -x`).                     | Disabled                           |
+| `--no-dir-list`          | `-l`      | Do not list input directories at the top of the output.                      | Disabled                           |
+| `--help`                 | `-h`      | Show the help message and exit.                                              | N/A                                |
 
-### Examples
+## Output Filename Logic
 
-1. **Concatenate Python Files in Current Directory (XML Output)**
+| Input Scenario                              | Output Filename         | Format |
+|---------------------------------------------|-------------------------|--------|
+| `-o custom.xml`                             | `custom.xml`            | XML    |
+| `-x md`, all files are `.md`                | `_concat-md.xml`        | XML    |
+| `-x txt`, all files are `.txt`              | `_concat-txt.txt`       | Text   |
+| `-x py -x js`, mixed extensions             | `_concat-output.xml`    | XML    |
+| No `-x`, single dir (e.g. `src/`)           | `_concat-src.txt`       | Text   |
+| No args, cwd = `myproject/`                 | `_concat-myproject.txt` | Text   |
+| No args, unresolvable basename (e.g. `/`)   | `_concat-output.txt`    | Text   |
 
-    ```zsh
-    concat -x py .
-    # Output: `<current-directory>-output.xml`
-    # (e.g. if cwd is `flatten-zsh`, file is `flatten-zsh-output.xml`)
-    ```
+## Examples
 
-2. **Concatenate Python and JavaScript Files in `src`, Output as Plain Text**
+1. **Custom output**
 
-    ```zsh
-    concat -t -x py -x js src/
-    # Output: `src-output.txt`
-    ```
+   ```zsh
+   concat -o custom.xml file1.py file2.js
+   # -> custom.xml
+   ```
 
-3. **Concatenate All Files in `project`, Exclude `*.log` and `build/` dir, Custom Output**
+2. **Markdown to XML**
 
-    ```zsh
-    # Excludes *.log (basename match) and */build/* (full-path match)
-    concat -o my_project.xml -E '*.log' -E '*/build/*' ~/project
-    ```
+   ```zsh
+   concat -x md docs/
+   # -> _concat-md.xml
+   ```
 
-4. **Exclude a Specific Filename Everywhere**
+3. **Text to plain text**
 
-    ```zsh
-    concat -E config.json .
-    # Output: `<current-directory>-output.txt`
-    # (e.g. `flatten-zsh-output.txt`)
-    ```
+   ```zsh
+   concat -x txt notes/
+   # -> _concat-txt.txt
+   ```
 
-5. **Concatenate Text Files, Include Hidden Files, Show Tree, Verbose Output**
+4. **Mixed Python and JavaScript**
 
-    ```zsh
-    concat -x txt -H -T -v .
-    # Output: `<current-directory>-output.xml`
-    # (includes tree, verbose messages printed)
-    ```
+   ```zsh
+   concat -x py -x js src/
+   # -> _concat-output.xml
+   ```
 
-6. **Concatenate Specific Files and Non-Recursive Search in a Directory**
+5. **Single dir default text**
 
-    ```zsh
-    concat -n config.yaml main.py data/
-    # Concatenates config.yaml, main.py, and files directly inside data/
-    # Output: `data-output.xml`
-    ```
+   ```zsh
+   concat src/
+   # -> _concat-src.txt
+   ```
+
+6. **Default in project root**
+
+   ```zsh
+   concat
+   # -> _concat-myproject.txt
+   ```
+
+7. **Fallback default**
+
+   ```zsh
+   concat /
+   # -> _concat-output.txt
+   ```
 
 ## Contributing
 
@@ -257,42 +267,42 @@ Contributions are welcome! Whether you're reporting a bug, suggesting a feature,
 
 1. **Fork the Repository**
 
-    Navigate to the repository page and click the "Fork" button to create your own copy.
+   Navigate to the repository page and click the "Fork" button to create your own copy.
 
 2. **Clone Your Fork**
 
-    ```zsh
-    git clone https://github.com/kgruiz/concat-zsh.git
-    cd concat-zsh
-    ```
+   ```zsh
+   git clone https://github.com/kgruiz/concat-zsh.git
+   cd concat-zsh
+   ```
 
 3. **Create a Feature Branch**
 
-    ```zsh
-    git checkout -b feature/YourFeatureName
-    ```
+   ```zsh
+   git checkout -b feature/YourFeatureName
+   ```
 
 4. **Make Your Changes**
 
-    Ensure your code adheres to the project's coding standards and includes necessary documentation. Update the README if options or behavior change.
+   Ensure your code adheres to the project's coding standards and includes necessary documentation. Update the README if options or behavior change.
 
 5. **Commit Your Changes**
 
-    ```zsh
-    git commit -m "Add feature: YourFeatureName"
-    ```
+   ```zsh
+   git commit -m "Add feature: YourFeatureName"
+   ```
 
 6. **Push to Your Fork**
 
-    ```zsh
-    git push origin feature/YourFeatureName
-    ```
+   ```zsh
+   git push origin feature/YourFeatureName
+   ```
 
 7. **Open a Pull Request**
 
-    Navigate to the original repository (`kgruiz/concat-zsh`) and click "New Pull Request." Provide a clear description of your changes and their purpose.
+   Navigate to the original repository (`kgruiz/concat-zsh`) and click "New Pull Request." Provide a clear description of your changes and their purpose.
 
-### Reporting Issues
+## Reporting Issues
 
 If you encounter any issues or have feature requests, please open an issue in the repository's [Issues](https://github.com/kgruiz/concat-zsh/issues) section. Include detailed information, steps to reproduce, expected vs. actual behavior, and your environment details (OS, Zsh version) to help maintainers address the problem effectively.
 
