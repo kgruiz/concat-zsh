@@ -361,12 +361,22 @@ EOF
         outputFile="$outputDir/$outputBaseName"
     fi
 
-    # Resolve the final absolute path for output, but fall back if file doesn’t exist
+    # Normalize outputFile path manually (works on macOS)
     local outputFilePath
-    if realpathOut=$(realpath "$outputFile" 2>/dev/null); then
-        outputFilePath=$realpathOut
+    if [ -n "$outputFile" ]; then
+        outputDir=$(dirname "$outputFile")
+        outputBase=$(basename "$outputFile")
+
+        if cd "$outputDir" 2>/dev/null; then
+            outputFilePath="$(pwd)/$outputBase"
+            cd - >/dev/null
+        else
+            echo "Error: Invalid output path: $outputFile" >&2
+            exit 1
+        fi
     else
-        outputFilePath="${PWD%/}/$outputBaseName"
+        echo "Error: No output file specified." >&2
+        exit 1
     fi
 
     # ---------------------------------------------------------------------
