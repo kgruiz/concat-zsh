@@ -32,6 +32,7 @@
 - **Recursive Search**: Traverse directories recursively (default) or limit the search to the top level.
 - **Include/Exclude Patterns**: Filter files based on full path glob patterns. Exclude patterns match against both full path and basename, and simple filenames are treated as `**/filename`.
 - **Hidden Files Handling**: Option to include hidden files and directories.
+  - **Automatic Text Detection**: Automatically skip binary or non-text files during concatenation.
 - **Python Cache Cleanup**: Optionally remove `__pycache__` directories and `.pyc` files found in the current working directory.
 - **Directory Tree Overview**: Optionally include a `tree` representation of the current directory in the output.
 - **Output Formats**: Generate output in XML (default) or plain text format.

@@ -637,6 +637,11 @@ EOF
             fi
         fi
 
+        # Skip non-text files
+        if ! grep -Iq . "$file_path"; then
+          [[ "$verbose" == true ]] && echo "Skipped file: \"$file_path\" (not text)"
+          continue
+        fi
         # If we reach here, the file is matched
         matchedFiles+=("$file_path")
         [[ "$verbose" == true ]] && echo "Matched file: \"$file_path\""
