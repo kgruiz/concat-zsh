@@ -49,51 +49,51 @@ Positional Arguments:
       If omitted, the current directory (".") is used.
 
 Options:
-  -o, --output <file>
-      Output file name (default: "_concat-output.xml" or ".txt").
+  -C, --no-clean-concat
+      Do not delete existing output files whose names start with "_concat-".
 
-  -r, --recursive
-      Search directories recursively (default).
+  -b, --include-binary
+      Include binary (non-text) files in the output. By default, only text files are processed.
 
-  -n, --no-recursive
-      Do not search directories recursively.
 
-  -t, --text
-      Output in plain text format instead of the default XML.
-
-  -x, --ext <ext>
-      Only include files with this extension (e.g., "py", "txt").
-      Can be specified multiple times. Case-insensitive. Excludes the dot.
-
-  -I, --include <glob>
-      Only include files whose full path matches this glob pattern.
-      Can be specified multiple times. Globs apply after extension filtering.
+  -d, --debug
+      Enable debug mode with execution tracing.
 
   -e, -E, --exclude <glob>
       Exclude files whose full path matches this glob pattern.
       Can be specified multiple times. Exclusions apply last.
 
-  -T, --tree
-      Include a directory tree representation (of the current directory)
-      in the output.
+  -g, --ignore-ext <ext>
+      Exclude files with this extension. Can be specified multiple times. Case-insensitive. Excludes the dot.
 
   -H, --hidden
-      Include hidden files and files in hidden directories (those starting
-      with '.'). By default, they are skipped unless explicitly listed
-      as input or matched by an --include glob starting with '.'.
+      Include hidden files and files in hidden directories (those starting with '.'). By default, they are skipped unless explicitly listed as input or matched by an --include glob starting with '.'.
 
-  -P, --no-purge-pycache
-      Do not delete __pycache__ directories and .pyc files found within
-      the current working directory.
+  -I, --include <glob>
+      Only include files whose full path matches this glob pattern.
+      Can be specified multiple times. Globs apply after extension filtering.
+
+  -l, --no-dir-list
+      Do not include a directory-grouped list of matched files.
+
+  -n, --no-recursive
+      Do not search directories recursively.
+
+  -o, --output <file>
+      Output file name (default: "_concat-output.xml" or ".txt").
+
+  -t, --text
+      Output in plain text format instead of the default XML.
+
+  -T, --tree
+      Include a directory tree representation (of the current directory) in the output.
 
   -v, --verbose
       Show detailed output, including matched and skipped files.
 
-  -d, --debug
-      Enable debug mode with execution tracing.
-
-  -l, --no-dir-list
-      Do not include a directory-grouped list of matched files.
+  -x, --ext <ext>
+      Only include files with this extension (e.g., "py", "txt").
+      Can be specified multiple times. Case-insensitive. Excludes the dot.
 
   -h, --help
       Show this help message and exit.
@@ -112,7 +112,7 @@ EOF
     # -------------------------------------------------------------------------
     local outputFile=""
     local userOutputProvided=false
-    local -a inputs includeGlobs excludeGlobs exts
+    local -a inputs includeGlobs excludeGlobs exts ignoreExts
     local recursive=true
     local includeHidden=false
     local format="xml" # xml or text
@@ -120,7 +120,9 @@ EOF
     local showDirList=true
     local delPyCache=true
     local verbose=false
+    local includeBinary=false
     local debug=false
+    local cleanConcatFiles=true
 
     # -------------------------------------------------------------------------
     # Pre-process arguments: Split flags, Expand Globs
@@ -129,7 +131,7 @@ EOF
     local -a expanded_flags=()
     # Split grouped short flags (only those without arguments)
     for arg in "${initial_args[@]}"; do
-      if [[ "$arg" =~ ^-[rntvdhTHP]+$ && ${#arg} -gt 2 ]]; then # Include uppercase T, H, P in grouped flags
+      if [[ "$arg" =~ ^-[ntvdhTHP]+$ && ${#arg} -gt 2 ]]; then # Include uppercase T, H, P in grouped flags
         for ((i=1; i<${#arg}; i++)); do
           expanded_flags+=("-${arg:i:1}")
         done
@@ -192,6 +194,10 @@ EOF
     # -------------------------------------------------------------------------
     while (( $# )); do
         case "$1" in
+            -C|--no-clean-concat)
+                cleanConcatFiles=false
+                shift
+            ;;
             -o|--output)
                 if [[ -n "$2" && "$2" != --* ]]; then
                     outputFile="$2"
@@ -202,10 +208,6 @@ EOF
                     echo "Error: --output requires a filename argument." >&2
                     return 1
                 fi
-            ;;
-            -r|--recursive)
-                recursive=true
-                shift
             ;;
             -n|--no-recursive)
                 recursive=false
@@ -223,6 +225,15 @@ EOF
                 else
                      echo "Error: --ext requires an extension argument." >&2
                      return 1
+                fi
+            ;;
+            -g|--ignore-ext)
+                if [[ -n "$2" && "$2" != --* ]]; then
+                    ignoreExts+=("${(L)2#.}")
+                    shift 2
+                else
+                    echo "Error: --ignore-ext requires an extension argument." >&2
+                    return 1
                 fi
             ;;
             -I|--include)
@@ -257,10 +268,6 @@ EOF
                 includeHidden=true
                 shift
             ;;
-            -P|--no-purge-pycache)
-                delPyCache=false
-                shift
-            ;;
             -v|--verbose)
                 verbose=true
                 shift
@@ -269,6 +276,10 @@ EOF
                 debug=true
                 set -x # Enable shell debug mode.
                 trap 'set +x' RETURN
+                shift
+            ;;
+            -b|--include-binary)
+                includeBinary=true
                 shift
             ;;
             -l|--no-dir-list)
@@ -447,6 +458,11 @@ EOF
         find . -type f -name "*.pyc" -print0 | xargs -0 --no-run-if-empty rm -f
     fi
 
+    if [[ "$cleanConcatFiles" == true ]]; then
+        [[ "$verbose" == true ]] && echo "Deleting existing _concat-* files"
+        find . -maxdepth 1 -type f -name "_concat-*" -exec rm -f {} +
+    fi
+
     # -------------------------------------------------------------------------
     # Collect Candidate Files
     # -------------------------------------------------------------------------
@@ -604,6 +620,17 @@ EOF
             fi
         fi
 
+        # Apply ignore extensions
+        if [[ ${#ignoreExts[@]} -gt 0 ]]; then
+            file_ext_lower="${(L)file_path:e}"
+            for ign in "${ignoreExts[@]}"; do
+                if [[ "$file_ext_lower" == "$ign" ]]; then
+                    [[ "$verbose" == true ]] && echo "Skipped file: \"$file_path\" (ignored extension: '$ign')"
+                    continue 2
+                fi
+            done
+        fi
+
         # Apply include filter (-I)
         if [[ ${#includeGlobs[@]} -gt 0 ]]; then
             local include_match=false
@@ -637,10 +664,12 @@ EOF
             fi
         fi
 
-        # Skip non-text files
+        # Skip non-text files unless includeBinary is true
         if ! grep -Iq . "$file_path"; then
-          [[ "$verbose" == true ]] && echo "Skipped file: \"$file_path\" (not text)"
-          continue
+          if [[ "$includeBinary" == false ]]; then
+            [[ "$verbose" == true ]] && echo "Skipped file: \"$file_path\" (not text)"
+            continue
+          fi
         fi
         # If we reach here, the file is matched
         matchedFiles+=("$file_path")
@@ -712,7 +741,14 @@ EOF
         if [[ "$showDirList" == true ]]; then
             echo "  <matchedFilesDirStructureList>"
             typeset -A matchedDirMap
-            fullInputDir="$(realpath "$inputDir")"
+            # Ensure the base for relative-path mapping is a directory.
+            local baseForRelative="$inputDir"
+
+            if [[ -n "$baseForRelative" && ! -d "$baseForRelative" ]]; then
+                baseForRelative="."  # default to CWD if first input is a file
+            fi
+
+            fullInputDir="$(realpath "$baseForRelative")"
             for file in "${matchedFiles[@]}"; do
                 fileFullPath="$(realpath "$file")"
                 dir=$(dirname "$fileFullPath")
