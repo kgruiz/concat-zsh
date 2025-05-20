@@ -260,6 +260,24 @@ concat [OPTIONS] [FILE...]
    # -> _concat-output.txt
    ```
 
+
+## Rust CLI
+This repository also provides a Rust-based version in `concat-rs`. Build it:
+
+```sh
+cd concat-rs && cargo build --release
+mv target/release/concat ~/bin/
+```
+
+After installing, call `concat` from Zsh like any command:
+
+```zsh
+concat -x rs src/
+```
+
+Run `concat --help` to see all options.
+
+ 
 ## Contributing
 
 Contributions are welcome! Whether you're reporting a bug, suggesting a feature, or submitting a pull request, your input helps improve `concat`.
