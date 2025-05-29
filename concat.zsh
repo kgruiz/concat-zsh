@@ -539,9 +539,17 @@ EOF
         fi
     done
 
-    # Make candidate list unique and sort
-    candidates=("${(@u)raw_candidates}")
-    candidates=("${(@f)$(printf '%s\n' "${candidates[@]}" | sort -V)}")
+    # Populate the 'candidates' array with sorted, unique, non-empty file paths.
+    candidates=()  # Initialize as empty
+
+    # Only process if raw_candidates has entries
+    if (( ${#raw_candidates[@]} > 0 )); then
+        local line
+        # Read sorted, unique lines and skip empties
+        while IFS= read -r line; do
+            [[ -n "$line" ]] && candidates+=("$line")
+        done < <(printf '%s\n' "${raw_candidates[@]}" | sort -uV)
+    fi
     [[ "$verbose" == true ]] && echo "Total unique candidate files found: ${#candidates[@]}"
 
     # -------------------------------------------------------------------------
