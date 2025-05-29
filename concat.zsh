@@ -862,6 +862,17 @@ EOF
         echo "Concatenation complete. Output written to \"$outputFilePath\"."
     fi
 
+    # Warn if no files were collected because current directory is hidden
+    # and the user did not request hidden files with -H
+    if [[ ${#matchedFiles[@]} -eq 0 && ${#originalArgs[@]} -eq 0 ]] && \ 
+       [[ "$includeHidden" == false ]]; then
+        local cwd_base
+        cwd_base="$(basename "$(pwd -P)")"
+        if [[ "$cwd_base" == .* ]]; then
+            echo "Warning: No files added because the current directory is hidden and -H was not specified." >&2
+        fi
+    fi
+
     if [[ "$debug" == true ]]; then
         set +x # Disable debug mode.
     fi
