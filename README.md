@@ -166,6 +166,14 @@ Integrate the `concat` function into your Zsh environment by selecting one of th
    # -> summary.txt
    ```
 
+6. **Remove old output files**
+
+   ```zsh
+   concat clean logs/
+   ```
+
+   Pass the same filtering options as regular runs to target specific files.
+
 ## Usage
 
 ### Basic Syntax
@@ -173,6 +181,8 @@ Integrate the `concat` function into your Zsh environment by selecting one of th
 ```zsh
 concat [OPTIONS] [FILE...]
 ```
+
+Run `concat clean [OPTIONS] [DIR...]` to delete existing `_concat-*` files. This command searches recursively by default; use `-n` to disable recursion. Other include/exclude flags work the same as for normal runs.
 
 ### Positional Arguments
 
@@ -258,6 +268,12 @@ concat [OPTIONS] [FILE...]
    ```zsh
    concat /
    # -> _concat-output.txt
+   ```
+
+8. **Clean up old outputs**
+
+   ```zsh
+   concat clean -n subdir/ -e '*backup*'
    ```
 
 
