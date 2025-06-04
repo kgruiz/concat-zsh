@@ -107,7 +107,7 @@ EOF
 
     if [[ "$1" == "clean" ]]; then
         shift
-        local recursive=false includeHidden=false verbose=false
+        local recursive=true includeHidden=false verbose=false
         local -a includeGlobs excludeGlobs exts ignoreExts paths
 
         while (( $# )); do
@@ -117,10 +117,10 @@ EOF
 Usage: concat clean [OPTIONS] [DIR...]
 
 Remove files named '_concat-*' from specified directories (default: current directory).
+Searches directories recursively by default.
 
 Options:
-  -r, --recursive            Search directories recursively.
-  -n, --no-recursive         Do not search recursively (default).
+  -n, --no-recursive         Do not search directories recursively.
   -I, --include <glob>       Only delete files whose path matches this glob.
   -e|-E|--exclude <glob>     Exclude files matching this glob.
   -x, --ext <ext>            Only delete files with this extension.
@@ -130,9 +130,6 @@ Options:
   -h, --help                 Show this help message.
 EOF
                     return 0
-                ;;
-                -r|--recursive)
-                    recursive=true; shift; continue
                 ;;
                 -n|--no-recursive)
                     recursive=false; shift; continue
