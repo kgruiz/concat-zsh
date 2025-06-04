@@ -40,6 +40,7 @@ concat() {
         if [[ "$arg" == "-h" || "$arg" == "--help" ]]; then
             cat <<EOF
 Usage: concat [OPTIONS] [FILE...]
+       concat clean
 
 Concatenates files matching specified criteria into a single output file.
 
@@ -97,10 +98,34 @@ Options:
 
   -h, --help
       Show this help message and exit.
+  clean
+      Remove previously generated _concat-* files from the current directory.
 EOF
             return 0
         fi
     done
+
+    if [[ "$1" == "clean" ]]; then
+        shift
+        local verbose=false
+        if [[ "$1" == "-h" || "$1" == "--help" ]]; then
+            cat <<EOF
+Usage: concat clean [-v]
+
+Deletes files named '_concat-*' in the current directory.
+EOF
+            return 0
+        fi
+        if [[ "$1" == "-v" || "$1" == "--verbose" ]]; then
+            verbose=true
+        elif [[ -n "$1" ]]; then
+            echo "Error: Unknown option '$1' for clean command." >&2
+            return 1
+        fi
+        [[ "$verbose" == true ]] && echo "Deleting existing _concat-* files"
+        find . -maxdepth 1 -type f -name "_concat-*" -exec rm -f {} +
+        return 0
+    fi
 
     # -------------------------------------------------------------------------
     # Save Original Arguments
