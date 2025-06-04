@@ -107,23 +107,135 @@ EOF
 
     if [[ "$1" == "clean" ]]; then
         shift
-        local verbose=false
-        if [[ "$1" == "-h" || "$1" == "--help" ]]; then
-            cat <<EOF
-Usage: concat clean [-v]
+        local recursive=false includeHidden=false verbose=false
+        local -a includeGlobs excludeGlobs exts ignoreExts paths
 
-Deletes files named '_concat-*' in the current directory.
+        while (( $# )); do
+            case "$1" in
+                -h|--help)
+                    cat <<EOF
+Usage: concat clean [OPTIONS] [DIR...]
+
+Remove files named '_concat-*' from specified directories (default: current directory).
+
+Options:
+  -r, --recursive            Search directories recursively.
+  -n, --no-recursive         Do not search recursively (default).
+  -I, --include <glob>       Only delete files whose path matches this glob.
+  -e|-E|--exclude <glob>     Exclude files matching this glob.
+  -x, --ext <ext>            Only delete files with this extension.
+  -g, --ignore-ext <ext>     Skip files with this extension.
+  -H, --hidden               Include hidden files and directories.
+  -v, --verbose              Print removed file paths.
+  -h, --help                 Show this help message.
 EOF
-            return 0
-        fi
-        if [[ "$1" == "-v" || "$1" == "--verbose" ]]; then
-            verbose=true
-        elif [[ -n "$1" ]]; then
-            echo "Error: Unknown option '$1' for clean command." >&2
-            return 1
-        fi
-        [[ "$verbose" == true ]] && echo "Deleting existing _concat-* files"
-        find . -maxdepth 1 -type f -name "_concat-*" -exec rm -f {} +
+                    return 0
+                ;;
+                -r|--recursive)
+                    recursive=true; shift; continue
+                ;;
+                -n|--no-recursive)
+                    recursive=false; shift; continue
+                ;;
+                -H|--hidden)
+                    includeHidden=true; shift; continue
+                ;;
+                -v|--verbose)
+                    verbose=true; shift; continue
+                ;;
+                -I|--include)
+                    if [[ -n "$2" ]]; then
+                        includeGlobs+=("$2"); shift 2; continue
+                    else
+                        echo "Error: --include requires a glob pattern." >&2; return 1
+                    fi
+                ;;
+                -e|-E|--exclude)
+                    if [[ -n "$2" ]]; then
+                        excludeGlobs+=("$2"); shift 2; continue
+                    else
+                        echo "Error: --exclude requires a glob pattern." >&2; return 1
+                    fi
+                ;;
+                -x|--ext)
+                    if [[ -n "$2" ]]; then
+                        exts+=("${2:l}"); shift 2; continue
+                    else
+                        echo "Error: --ext requires an extension argument." >&2; return 1
+                    fi
+                ;;
+                -g|--ignore-ext)
+                    if [[ -n "$2" ]]; then
+                        ignoreExts+=("${2:l}"); shift 2; continue
+                    else
+                        echo "Error: --ignore-ext requires an extension argument." >&2; return 1
+                    fi
+                ;;
+                --)
+                    shift; break
+                ;;
+                -*)
+                    echo "Error: Unknown option '$1' for clean command." >&2; return 1
+                ;;
+                *)
+                    paths+=("$1"); shift; continue
+                ;;
+            esac
+        done
+
+        (( ${#paths[@]} == 0 )) && paths=(".")
+        local file ext extLower included match skip
+        local -a candidates found
+
+        for path in "${paths[@]}"; do
+            if [[ "$recursive" == true ]]; then
+                mapfile -t found < <(find "$path" -type f -name '_concat-*')
+            else
+                mapfile -t found < <(find "$path" -maxdepth 1 -type f -name '_concat-*')
+            fi
+            candidates+=("${found[@]}")
+        done
+
+        for file in "${candidates[@]}"; do
+            [[ -f "$file" ]] || continue
+            if [[ "$includeHidden" == false ]]; then
+                if [[ "$file" == */.* || "$(basename "$file")" == .* ]]; then
+                    continue
+                fi
+            fi
+
+            ext="${file##*.}"; extLower="${ext:l}"
+            if (( ${#exts[@]} )); then
+                match=false
+                for e in "${exts[@]}"; do
+                    [[ "$extLower" == "${e:l}" ]] && match=true && break
+                done
+                [[ "$match" == true ]] || continue
+            fi
+
+            for e in "${ignoreExts[@]}"; do
+                [[ "$extLower" == "${e:l}" ]] && skip=true && break
+            done
+            [[ "$skip" == true ]] && continue
+            skip=false
+
+            if (( ${#includeGlobs[@]} )); then
+                included=false
+                for pattern in "${includeGlobs[@]}"; do
+                    if [[ "$file" == ${~pattern} ]]; then
+                        included=true; break
+                    fi
+                done
+                [[ "$included" == true ]] || continue
+            fi
+            for pattern in "${excludeGlobs[@]}"; do
+                [[ "$file" == ${~pattern} ]] && skip=true && break
+            done
+            [[ "$skip" == true ]] && continue
+
+            [[ "$verbose" == true ]] && echo "Deleting $file"
+            rm -f -- "$file"
+        done
         return 0
     fi
 
