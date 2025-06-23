@@ -109,6 +109,7 @@ EOF
         shift
         local recursive=true includeHidden=false verbose=false
         local -a includeGlobs excludeGlobs exts ignoreExts paths
+        local dir
 
         while (( $# )); do
             case "$1" in
@@ -184,11 +185,11 @@ EOF
         local file ext extLower included match skip
         local -a candidates found
 
-        for path in "${paths[@]}"; do
+        for dir in "${paths[@]}"; do
             if [[ "$recursive" == true ]]; then
-                mapfile -t found < <(find "$path" -type f -name '_concat-*')
+                found=( "${(@f)$(find "$dir" -type f -name '_concat-*')}" )
             else
-                mapfile -t found < <(find "$path" -maxdepth 1 -type f -name '_concat-*')
+                found=( "${(@f)$(find "$dir" -maxdepth 1 -type f -name '_concat-*')}" )
             fi
             candidates+=("${found[@]}")
         done
@@ -998,7 +999,7 @@ EOF
 
     # Warn if no files were collected because current directory is hidden
     # and the user did not request hidden files with -H
-    if [[ ${#matchedFiles[@]} -eq 0 && ${#originalArgs[@]} -eq 0 ]] && \ 
+    if [[ ${#matchedFiles[@]} -eq 0 && ${#originalArgs[@]} -eq 0 ]] && \
        [[ "$includeHidden" == false ]]; then
         local cwd_base
         cwd_base="$(basename "$(pwd -P)")"
