@@ -295,7 +295,7 @@ concat -x rs src/
 
 Run `concat --help` to see all options.
 
- 
+
 ## Contributing
 
 Contributions are welcome! Whether you're reporting a bug, suggesting a feature, or submitting a pull request, your input helps improve `concat`.
