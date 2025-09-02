@@ -39,6 +39,8 @@
 - **Verbose and Debug Modes**: Enable detailed logging and execution tracing for troubleshooting.
 - **Customizable Output**: Specify output file names.
 
+Note on directory listing: when the XML includes the optional matched-directories list, all paths are computed relative to the current working directory (CWD). If a matched directory is outside the CWD, its absolute path is shown. This avoids misleading prefixes when glob inputs span multiple roots.
+
 ## Installation
 
 Integrate the `concat` function into your Zsh environment by selecting one of the following methods based on your preference and setup requirements.
