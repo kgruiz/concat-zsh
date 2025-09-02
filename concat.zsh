@@ -884,14 +884,6 @@ EOF
         if [[ "$showDirList" == true ]]; then
             echo "  <matchedFilesDirStructureList>"
             typeset -A matchedDirMap
-            # Ensure the base for relative-path mapping is a directory.
-            local baseForRelative="$inputDir"
-
-            if [[ -n "$baseForRelative" && ! -d "$baseForRelative" ]]; then
-                baseForRelative="."  # default to CWD if first input is a file
-            fi
-
-            fullInputDir="$(realpath "$baseForRelative")"
             for file in "${matchedFiles[@]}"; do
                 fileFullPath="$(realpath "$file")"
                 dir=$(dirname "$fileFullPath")
@@ -904,22 +896,19 @@ EOF
                     fi
                 fi
             done
-            # Compute a stable relative path for display:
-            # - Prefer relative to the primary input directory if under it
-            # - Otherwise, fall back to path relative to the current working directory
-            # - As a last resort, use the directory basename (avoid absolute paths)
+            # Compute relative paths strictly against the current working directory (CWD).
+            # - If a directory is inside the CWD, show the CWD-relative path.
+            # - If it is exactly the CWD, show ".".
+            # - Otherwise (outside the CWD), show the absolute path.
             local cwdPath="$(pwd -P)"
             for dir in ${(k)matchedDirMap}; do
-                if [[ "$dir" == "$fullInputDir" ]]; then
-                    relativeDir="$(basename "$fullInputDir")"
-                elif [[ "$dir" == "$fullInputDir"/* ]]; then
-                    relativeDir="$(basename "$fullInputDir")/${dir#$fullInputDir/}"
-                elif [[ "$dir" == "$cwdPath" ]]; then
-                    relativeDir="$(basename "$cwdPath")"
-                elif [[ "$dir" == "$cwdPath"/* ]]; then
+                local relativeDir
+                if [[ "$dir" == "$cwdPath"/* ]]; then
                     relativeDir="${dir#$cwdPath/}"
+                elif [[ "$dir" == "$cwdPath" ]]; then
+                    relativeDir="."
                 else
-                    relativeDir="$(basename "$dir")"
+                    relativeDir="$dir"
                 fi
                 echo "    <dirEntry>\"$relativeDir\": [${matchedDirMap[$dir]}]</dirEntry>"
             done | sort -V
