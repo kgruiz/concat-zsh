@@ -904,11 +904,22 @@ EOF
                     fi
                 fi
             done
+            # Compute a stable relative path for display:
+            # - Prefer relative to the primary input directory if under it
+            # - Otherwise, fall back to path relative to the current working directory
+            # - As a last resort, use the directory basename (avoid absolute paths)
+            local cwdPath="$(pwd -P)"
             for dir in ${(k)matchedDirMap}; do
                 if [[ "$dir" == "$fullInputDir" ]]; then
                     relativeDir="$(basename "$fullInputDir")"
-                else
+                elif [[ "$dir" == "$fullInputDir"/* ]]; then
                     relativeDir="$(basename "$fullInputDir")/${dir#$fullInputDir/}"
+                elif [[ "$dir" == "$cwdPath" ]]; then
+                    relativeDir="$(basename "$cwdPath")"
+                elif [[ "$dir" == "$cwdPath"/* ]]; then
+                    relativeDir="${dir#$cwdPath/}"
+                else
+                    relativeDir="$(basename "$dir")"
                 fi
                 echo "    <dirEntry>\"$relativeDir\": [${matchedDirMap[$dir]}]</dirEntry>"
             done | sort -V
