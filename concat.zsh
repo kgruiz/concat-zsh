@@ -901,8 +901,8 @@ EOF
             # - If it is exactly the CWD, show ".".
             # - Otherwise (outside the CWD), show the absolute path.
             local cwdPath="$(pwd -P)"
+            local relativeDir
             for dir in ${(k)matchedDirMap}; do
-                local relativeDir
                 if [[ "$dir" == "$cwdPath"/* ]]; then
                     relativeDir="${dir#$cwdPath/}"
                 elif [[ "$dir" == "$cwdPath" ]]; then
