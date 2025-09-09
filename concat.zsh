@@ -918,10 +918,10 @@ EOF
         # Add File Contents
         echo "  <fileContents count=\"${#matchedFiles[@]}\">"
         if [[ ${#matchedFiles[@]} -gt 0 ]]; then
+            local absolutePath
             for file in "${matchedFiles[@]}"; do
                 local filename="$(basename "$file")"
                 # Use realpath again just to be absolutely sure it's canonical
-                local absolutePath
                 absolutePath="$(realpath "$file" 2>/dev/null)" || absolutePath="$file" # Fallback if realpath fails
                 echo "    <file>"
                 echo "      <path>$absolutePath</path>" # Use absolute path
@@ -958,9 +958,9 @@ EOF
         echo "********************************************************************************"
         if [[ ${#matchedFiles[@]} -gt 0 ]]; then
             local currentFile=0
+            local absolutePath
             for file in "${matchedFiles[@]}"; do
                 ((currentFile++))
-                local absolutePath
                 absolutePath="$(realpath "$file" 2>/dev/null)" || absolutePath="$file" # Fallback
                 echo ""
                 echo "--------------------------------------------------------------------------------"
