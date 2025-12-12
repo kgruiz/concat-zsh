@@ -2,6 +2,8 @@
 
 `concat` is a Zsh function designed to merge the contents of multiple files or files within specified directories into a single output file. It supports filtering by extension, include/exclude patterns, recursive search, and handling hidden files. Developed initially to aggregate files for use as context in Large Language Model (LLM) queries, `concat` is a versatile tool for developers and system administrators seeking to organize and consolidate project files efficiently.
 
+> Prefer the Rust-based successor here: [concat-rs](https://github.com/kgruiz/concat-rs).
+
 ## Table of Contents
 
 - [Overview](#overview)
